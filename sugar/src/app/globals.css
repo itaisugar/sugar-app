@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-sugar: #D48B2C;
+  --color-sugar-light: #F0A84A;
+  --color-sugar-dim: #A86B1A;
+  --color-sugar-muted: rgba(212, 139, 44, 0.15);
+  --color-bg: #0A0A0A;
+  --color-surface: #141414;
+  --color-elevated: #1E1E1E;
+  --color-border: #2A2A2A;
+  --color-text: #F5F5F5;
+  --color-muted: #888888;
+  --color-muted-light: #AAAAAA;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #000;
+  color: #F5F5F5;
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.animate-slide-up {
+  animation: slideUp 400ms ease-out both;
+}
+.animate-fade-in {
+  animation: fadeIn 300ms ease-out both;
+}
