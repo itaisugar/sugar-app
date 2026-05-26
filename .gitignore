@@ -6,6 +6,10 @@ intellifeed/.env
 intellifeed/.env.local
 intellifeed/.env*.local
 
+# Supabase CLI temp state
+intellifeed/supabase/.temp/
+intellifeed/supabase/.branches/
+
 # Dependencies & build artifacts
 intellifeed/node_modules/
 intellifeed/.expo/
