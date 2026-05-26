@@ -122,23 +122,26 @@ async function summarizeWithClaude(args: {
   url: string;
   pageTitle: string;
   bodyText: string;
+  kind?: 'article' | 'podcast';
 }): Promise<AISummary> {
   if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not configured.');
 
+  const sourceLabel = args.kind === 'podcast' ? 'podcast episode' : 'article';
+
   const prompt = `You are a senior editor at Sapiens — a premium app for cognitive consumption. Your tone is intellectual, calm, and editorial.
 
-Given the article below, produce a JSON object with these fields:
+Given the ${sourceLabel} below, produce a JSON object with these fields:
 - "title": a clean, polished headline (use the original title if it's already strong; otherwise refine it). No clickbait.
 - "summary": 2-3 sentences (60-90 words) capturing the most important insight or finding, in the editorial voice of The New Yorker or Aeon.
 - "category": ONE value from this list ONLY: ${ALLOWED_CATEGORIES.join(', ')}
 - "tags": 3-5 short keyword tags (capitalized, single or two-word, no hashtag)
-- "read_time_minutes": estimated reading time as an integer
+- "read_time_minutes": estimated reading or listening time as an integer
 
 Return ONLY valid JSON, no preamble, no markdown fences.
 
-ARTICLE URL: ${args.url}
-ARTICLE TITLE: ${args.pageTitle}
-ARTICLE TEXT:
+SOURCE URL: ${args.url}
+TITLE: ${args.pageTitle}
+${args.kind === 'podcast' ? 'EPISODE DESCRIPTION' : 'BODY TEXT'}:
 ${args.bodyText}`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -254,21 +257,99 @@ Deno.serve(async (req: Request) => {
   // Extract metadata
   const ogTitle = extractMeta(html, 'og:title') ?? extractMeta(html, 'twitter:title');
   const ogImage = extractMeta(html, 'og:image') ?? extractMeta(html, 'twitter:image');
+  const ogDescription = extractMeta(html, 'og:description') ?? extractMeta(html, 'description');
   const ogSite = extractMeta(html, 'og:site_name');
   const docTitleMatch = html.match(/<title>([^<]+)<\/title>/i);
   const docTitle = docTitleMatch ? decodeEntities(docTitleMatch[1]).trim() : '';
   const pageTitle = ogTitle ?? docTitle ?? url;
-  const source = ogSite ?? deriveSourceFromUrl(url);
 
+  // ─── Spotify path — JS-rendered, so harvest every meta source we can ─────
+  const isSpotify = /spotify\.com/i.test(url);
+  if (isSpotify) {
+    // og:title on Spotify looks like "Episode Title | Show Name | Podcast on Spotify"
+    const parts = (ogTitle ?? '').split(' | ').map((s) => s.trim()).filter(Boolean);
+    const cleanTitle = parts[0] ?? pageTitle;
+    const showName = parts[1] ?? ogSite ?? 'Spotify';
+
+    // Collect description from multiple possible sources, longest wins
+    const candidates: string[] = [];
+    if (ogDescription) candidates.push(ogDescription.trim());
+    const twitterDesc = extractMeta(html, 'twitter:description');
+    if (twitterDesc) candidates.push(twitterDesc.trim());
+
+    // JSON-LD structured data (Spotify often embeds an Episode/PodcastEpisode schema)
+    const ldMatches = html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+    for (const m of ldMatches) {
+      try {
+        const ld = JSON.parse(decodeEntities(m[1]));
+        const items = Array.isArray(ld) ? ld : [ld];
+        for (const item of items) {
+          if (typeof item?.description === 'string') candidates.push(item.description);
+          if (Array.isArray(item?.['@graph'])) {
+            for (const g of item['@graph']) {
+              if (typeof g?.description === 'string') candidates.push(g.description);
+            }
+          }
+        }
+      } catch {}
+    }
+
+    const description = candidates
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .sort((a, b) => b.length - a.length)[0] ?? '';
+
+    if (description.length < 10) {
+      // Truly no usable text — let the editor fill the summary manually
+      return json({
+        title: cleanTitle,
+        summary: '',
+        source: showName,
+        category: 'Performance',
+        category_color: CATEGORY_COLORS['Performance'],
+        read_time: 30,
+        image_url: ogImage ?? '',
+        content_url: url,
+        tags: [],
+      });
+    }
+
+    // Always run Claude — even short descriptions yield a useful editorial recast
+    let ai: AISummary;
+    try {
+      ai = await summarizeWithClaude({
+        url,
+        pageTitle: `${cleanTitle} — ${showName}`,
+        bodyText: description,
+        kind: 'podcast',
+      });
+    } catch (e) {
+      return json({ error: `Summarization failed: ${(e as Error).message}` }, 502);
+    }
+
+    return json({
+      title: cleanTitle,
+      summary: ai.summary,
+      source: showName,
+      category: ai.category,
+      category_color: CATEGORY_COLORS[ai.category] ?? '#1D4ED8',
+      read_time: ai.read_time_minutes,
+      image_url: ogImage ?? '',
+      content_url: url,
+      tags: ai.tags,
+    });
+  }
+
+  // ─── Article path — full body extraction ────────────────────────────────
+  const source = ogSite ?? deriveSourceFromUrl(url);
   const bodyText = extractBodyText(html);
   if (bodyText.length < 200) {
     return json({ error: 'The article body could not be extracted (the page may require JavaScript).' }, 422);
   }
 
-  // Summarize via Claude
   let ai: AISummary;
   try {
-    ai = await summarizeWithClaude({ url, pageTitle, bodyText });
+    ai = await summarizeWithClaude({ url, pageTitle, bodyText, kind: 'article' });
   } catch (e) {
     return json({ error: `Summarization failed: ${(e as Error).message}` }, 502);
   }

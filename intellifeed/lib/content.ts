@@ -16,6 +16,7 @@ export type ContentItemRow = {
   podcast_duration: number | null;
   image_url: string | null;
   content_url: string | null;
+  audio_url: string | null;
   content_source: ContentSource;
   content_type: ContentType;
   tags: string[];
@@ -41,6 +42,7 @@ export type FeedItem = {
   contentSource: ContentSource;
   contentType: ContentType;
   contentUrl: string | null;
+  audioUrl: string | null;
   likes: number;
   saves: number;
   isLiked: boolean;            // local-only for now; persisted in Step 2
@@ -78,6 +80,7 @@ function rowToFeedItem(row: ContentItemRow): FeedItem {
     contentSource: row.content_source,
     contentType: row.content_type,
     contentUrl: row.content_url ?? null,
+    audioUrl: row.audio_url ?? null,
     likes: row.likes_count,
     saves: row.saves_count,
     isLiked: false,

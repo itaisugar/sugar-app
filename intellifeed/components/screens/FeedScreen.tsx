@@ -13,11 +13,14 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Linking,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../lib/AuthContext';
 import { useProfile } from '../../lib/ProfileContext';
+import { usePodcastPlayer } from '../../lib/PodcastPlayerContext';
 import { fetchContentItems, FeedItem } from '../../lib/content';
 
 const CATEGORIES = ['All', 'Science', 'AI', 'Philosophy', 'Performance', 'Geopolitics', 'Business'];
@@ -29,7 +32,11 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void; onLike: () => void }) {
-  const [playing, setPlaying] = useState(false);
+  const router = useRouter();
+  const player = usePodcastPlayer();
+  const isThisActive = player.isActive(item.id);
+  const isThisPlaying = isThisActive && player.isPlaying;
+  const isThisLoading = isThisActive && player.isLoading;
 
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '';
@@ -38,23 +45,41 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  const openArticle = async () => {
-    if (!item.contentUrl) {
-      Alert.alert(
-        'Full article unavailable',
-        'A link to the original source has not been attached to this piece yet.',
-      );
-      return;
-    }
-    try {
-      await WebBrowser.openBrowserAsync(item.contentUrl, {
-        toolbarColor: Colors.background,
-        controlsColor: Colors.primary,
-        dismissButtonStyle: 'close',
+  const formatMs = (ms: number) => {
+    const total = Math.floor(ms / 1000);
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const onTogglePlay = async () => {
+    if (!item.audioUrl) return;
+    if (isThisPlaying) {
+      await player.pause();
+    } else if (isThisActive) {
+      await player.resume();
+    } else {
+      await player.play({
+        id: item.id,
+        title: item.title,
+        source: item.source,
+        audioUrl: item.audioUrl,
+        imageUrl: item.image,
       });
-    } catch {
-      Alert.alert('Could not open the article', 'Please try again in a moment.');
     }
+  };
+
+  // Live progress fraction (0-1) when this episode is active
+  const progressFraction =
+    isThisActive && player.durationMs > 0
+      ? Math.min(1, player.positionMs / player.durationMs)
+      : 0;
+
+  const isSpotify =
+    !!item.contentUrl && /(^https?:\/\/(open\.)?spotify\.com\/)|^spotify:/i.test(item.contentUrl);
+
+  const openArticle = () => {
+    router.push({ pathname: '/article/[id]', params: { id: item.id } });
   };
 
   return (
@@ -107,28 +132,42 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
             <Text style={styles.readTime}>{item.readTime} min read</Text>
           </View>
           {item.contentUrl ? (
-            <View style={styles.readMorePill}>
-              <Text style={styles.readMoreText}>Read article  ↗</Text>
+            <View style={[styles.readMorePill, isSpotify && styles.spotifyPill]}>
+              <Text style={[styles.readMoreText, isSpotify && styles.spotifyPillText]}>
+                {isSpotify ? 'Listen on Spotify  ↗' : 'Read article  ↗'}
+              </Text>
             </View>
           ) : null}
         </View>
       </Pressable>
 
-      {item.podcastDuration && (
+      {(item.audioUrl || item.podcastDuration) && (
         <TouchableOpacity
-          style={[styles.podcastPlayer, playing && styles.podcastPlayerActive]}
-          onPress={() => setPlaying(!playing)}
+          style={[styles.podcastPlayer, isThisActive && styles.podcastPlayerActive]}
+          onPress={onTogglePlay}
+          disabled={!item.audioUrl}
+          activeOpacity={0.85}
         >
-          <View style={styles.playButton}>
-            <Text style={styles.playIcon}>{playing ? '||' : '▶'}</Text>
+          <View style={[styles.playButton, !item.audioUrl && { opacity: 0.4 }]}>
+            {isThisLoading ? (
+              <ActivityIndicator size="small" color={Colors.white} />
+            ) : (
+              <Text style={styles.playIcon}>{isThisPlaying ? '❚❚' : '▶'}</Text>
+            )}
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.podcastLabel}>Listen — Distilled Audio</Text>
+            <Text style={styles.podcastLabel}>
+              {item.audioUrl ? (isThisActive ? 'Now Playing' : 'Listen — Distilled Audio') : 'Audio coming soon'}
+            </Text>
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: playing ? '35%' : '0%' }]} />
+              <View style={[styles.progressFill, { width: `${progressFraction * 100}%` }]} />
             </View>
           </View>
-          <Text style={styles.podcastDuration}>{formatDuration(item.podcastDuration)}</Text>
+          <Text style={styles.podcastDuration}>
+            {isThisActive && player.durationMs > 0
+              ? `${formatMs(player.positionMs)} / ${formatMs(player.durationMs)}`
+              : formatDuration(item.podcastDuration)}
+          </Text>
         </TouchableOpacity>
       )}
 
@@ -246,7 +285,9 @@ export default function FeedScreen() {
           <Text style={TextStyles.kicker}>
             {profile?.full_name ? `Welcome, ${profile.full_name.split(' ')[0]}` : 'Knowledge, Distilled'}
           </Text>
-          <Text style={[TextStyles.appTitle, { marginTop: 4 }]}>Sapiens</Text>
+          <Text style={[TextStyles.appTitle, { marginTop: 4 }]}>
+            Sapiens<Text style={{ color: Colors.primary }}>.</Text>
+          </Text>
         </View>
         <View style={styles.headerRight}>
           <View style={styles.streakBadge}>
@@ -255,9 +296,6 @@ export default function FeedScreen() {
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
-          <TouchableOpacity onPress={signOut} style={styles.logoutBtn} accessibilityLabel="Sign out">
-            <Text style={styles.logoutIcon}>↪</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -628,6 +666,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.primary,
     letterSpacing: 0.4,
+  },
+  spotifyPill: {
+    backgroundColor: '#1DB95412',
+    borderColor: '#1DB95440',
+  },
+  spotifyPillText: {
+    color: '#0F8E3F',
   },
   podcastPlayer: {
     flexDirection: 'row',

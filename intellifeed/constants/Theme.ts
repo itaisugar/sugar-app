@@ -1,77 +1,293 @@
-// ─── The Modern Thinker Theme ───────────────────────────────────────────────
-// A premium, intellectual palette balancing clarity and depth.
+// ─── The Atelier Theme ───────────────────────────────────────────────────────
+// Editorial luxury. Warm cream paper, terracotta accent, deep ink.
+// Newsreader (serif) for reading and headlines · Manrope (sans) for UI
+// metadata · Geist Mono for kickers and overlines.
+
+import type { TextStyle } from 'react-native';
 
 export const Colors = {
-  // Core surfaces
-  background: '#F8F9FA',          // Clean cream/ivory — global canvas
-  surface: '#FFFFFF',             // Pure white — cards and containers
-  surfaceElevated: '#FFFFFF',     // Identical surface tone (light theme)
-  surfaceBorder: '#E2E8F0',       // Light gray-blue — subtle dividers
-  surfaceMuted: '#F1F5F9',        // Faintly tinted neutral
+  // Surfaces — layered cream tones
+  background: '#F4EDE0',           // warm cream paper
+  backgroundDeep: '#ECE4D3',       // shadowed paper
+  surface: '#FAF6EC',              // raised paper (cards)
+  surfaceElevated: '#FFFFFF',      // crispest paper (modals)
+  surfaceMuted: '#EDE5D0',         // muted overlay
+  surfaceBorder: 'rgba(45,36,24,0.08)',
+  surfaceBorderStrong: 'rgba(45,36,24,0.18)',
 
-  // Text — deep navy avoids the harshness of pure black
-  textPrimary: '#0F172A',         // Deep Navy / Slate Black — headings & body
-  textSecondary: '#475569',       // Slate Gray — subtitles & descriptions
-  textMuted: '#64748B',           // Muted Slate — metadata & secondary accent
+  // Text — warm ink hierarchy
+  textPrimary: '#241C12',          // deep ink
+  textSecondary: '#3D3326',        // body
+  textMuted: '#6B5D4C',            // captions, metadata
+  textFaint: '#A89070',            // faintest
 
-  // Primary accent — Deep Steel Blue (buttons, active states, key links)
-  primary: '#1D4ED8',
-  primaryLight: '#3B82F6',
-  primaryDark: '#1E40AF',         // Hover / pressed state
-  primaryGlow: '#1D4ED81A',       // Translucent blue overlay (~10%)
+  // Primary — terracotta (signature accent)
+  primary: '#7C5234',
+  primaryDark: '#5E3E27',          // hover / pressed
+  primaryGlow: 'rgba(124,82,52,0.08)',
+  primaryGlowStrong: 'rgba(124,82,52,0.16)',
 
-  // Functional accents
-  accent: '#1D4ED8',
-  accentGreen: '#059669',         // Success / progress signals
-  accentOrange: '#D97706',        // Subtle highlight
-  accentBlue: '#64748B',          // Muted slate — secondary accent
+  // Secondary accents
+  accentSage: '#4F6346',           // sage green
+  accentOchre: '#8A6B2E',          // warm ochre
+  accentBurgundy: '#A05A4E',       // muted burgundy
 
-  // Category tags — saturated yet refined; readable on white
-  tagSport: '#B91C1C',            // Crimson
-  tagScience: '#0E7490',          // Teal
-  tagAI: '#1E40AF',               // Deep Blue
-  tagPsych: '#15803D',            // Forest Green
-  tagHistory: '#A16207',          // Amber Brown
-  tagBusiness: '#7C3AED',         // Royal Purple
-  tagHealth: '#059669',           // Emerald
-  tagPhilosophy: '#B45309',       // Warm Ochre
+  // Functional
+  success: '#4F6346',
+  warning: '#8A6B2E',
+  danger: '#A04638',
+
+  // Category tags — restrained earth tones harmonizing with terracotta
+  tagSport: '#A04638',
+  tagScience: '#4F6346',
+  tagAI: '#5C6A82',
+  tagPsych: '#4F6346',
+  tagHistory: '#8A6B2E',
+  tagBusiness: '#7C5234',
+  tagHealth: '#4F6346',
+  tagPhilosophy: '#8A6B2E',
 
   white: '#FFFFFF',
   black: '#000000',
   transparent: 'transparent',
 };
 
-// ─── Font Families ───────────────────────────────────────────────────────────
-// Playfair Display — Headings, quotes, logo (Serif)
-// Inter — Body text, UI elements (Sans-Serif)
-
+// ─── Font Families ──────────────────────────────────────────────────────────
 export const Fonts = {
-  serif: 'PlayfairDisplay_700Bold',
-  serifRegular: 'PlayfairDisplay_400Regular',
-  serifItalic: 'PlayfairDisplay_400Regular_Italic',
-  sans: 'Inter_400Regular',
-  sansMedium: 'Inter_500Medium',
-  sansSemibold: 'Inter_600SemiBold',
-  sansBold: 'Inter_700Bold',
+  // Newsreader — editorial body + headings
+  serif: 'Newsreader_500Medium',
+  serifRegular: 'Newsreader_400Regular',
+  serifSemibold: 'Newsreader_600SemiBold',
+  serifItalic: 'Newsreader_400Regular_Italic',
+  serifItalicMedium: 'Newsreader_500Medium_Italic',
+  // Manrope — UI text
+  sans: 'Manrope_400Regular',
+  sansMedium: 'Manrope_500Medium',
+  sansSemibold: 'Manrope_600SemiBold',
+  sansBold: 'Manrope_700Bold',
+  // Geist Mono — kicker / overline / numerical metadata
+  mono: 'GeistMono_400Regular',
+  monoMedium: 'GeistMono_500Medium',
 };
 
-export const Typography = {
-  // Font sizes
-  xs: 11,
-  sm: 13,
-  base: 15,
-  md: 17,
-  lg: 20,
-  xl: 24,
-  xxl: 30,
-  xxxl: 38,
+// ─── Typography System ──────────────────────────────────────────────────────
+// Hierarchy through family + size + spacing + color. Atelier uses Newsreader
+// for editorial moments AND body reading; Manrope for UI/metadata; Geist
+// Mono for kickers (uppercase typographic labels).
 
-  // Font weights
-  regular: '400' as const,
-  medium: '500' as const,
-  semibold: '600' as const,
-  bold: '700' as const,
-  heavy: '800' as const,
+export const TextStyles: Record<string, TextStyle> = {
+  // ── EDITORIAL (Newsreader) ───────────────────────────────────────────────
+  appTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 30,
+    lineHeight: 32,
+    letterSpacing: -0.6,
+    color: Colors.textPrimary,
+  },
+  screenTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 36,
+    lineHeight: 38,
+    letterSpacing: -0.7,
+    color: Colors.textPrimary,
+  },
+  heroTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 32,
+    lineHeight: 34,
+    letterSpacing: -0.6,
+    color: Colors.textPrimary,
+  },
+  sectionTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: -0.3,
+    color: Colors.textPrimary,
+  },
+  cardTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 20,
+    lineHeight: 24,
+    letterSpacing: -0.3,
+    color: Colors.textPrimary,
+  },
+  cardTitleSmall: {
+    fontFamily: Fonts.serif,
+    fontSize: 17,
+    lineHeight: 22,
+    color: Colors.textPrimary,
+  },
+  emptyTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 20,
+    lineHeight: 26,
+    color: Colors.textPrimary,
+  },
+  displayNumber: {
+    fontFamily: Fonts.serif,
+    fontSize: 44,
+    lineHeight: 44,
+    letterSpacing: -1,
+    color: Colors.textPrimary,
+  },
+  tagline: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 14,
+    lineHeight: 22,
+    color: Colors.textMuted,
+  },
+
+  // Body reading (serif, like an article)
+  body: {
+    fontFamily: Fonts.serifRegular,
+    fontSize: 15,
+    lineHeight: 23,
+    color: Colors.textSecondary,
+  },
+  bodySecondary: {
+    fontFamily: Fonts.serifRegular,
+    fontSize: 14,
+    lineHeight: 22,
+    color: Colors.textMuted,
+  },
+
+  // ── UI / READABILITY (Manrope) ───────────────────────────────────────────
+  helper: {
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    lineHeight: 19,
+    color: Colors.textMuted,
+  },
+  caption: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Colors.textMuted,
+  },
+  meta: {
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    lineHeight: 15,
+    color: Colors.textMuted,
+  },
+
+  // ── KICKERS / OVERLINES (Geist Mono) ─────────────────────────────────────
+  kicker: {
+    fontFamily: Fonts.monoMedium,
+    fontSize: 10,
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+    color: Colors.primary,
+  },
+  overline: {
+    fontFamily: Fonts.monoMedium,
+    fontSize: 10,
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+    color: Colors.textFaint,
+  },
+
+  // ── Forms ─────────────────────────────────────────────────────────────────
+  inputLabel: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 12,
+    letterSpacing: 0.3,
+    color: Colors.textPrimary,
+  },
+  inputValue: {
+    fontFamily: Fonts.sans,
+    fontSize: 15,
+    color: Colors.textPrimary,
+  },
+  inputHelper: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.textMuted,
+  },
+  error: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 12,
+    color: Colors.danger,
+  },
+
+  // ── Buttons ───────────────────────────────────────────────────────────────
+  buttonPrimary: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 12,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: Colors.surface,
+  },
+  buttonSecondary: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 11,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: Colors.primary,
+  },
+  buttonGhost: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 13,
+    color: Colors.primary,
+  },
+
+  // ── Tab bar ───────────────────────────────────────────────────────────────
+  tabLabel: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: Colors.textFaint,
+  },
+  tabLabelActive: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: Colors.primary,
+  },
+
+  // ── Empty states ──────────────────────────────────────────────────────────
+  emptyDescription: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 14,
+    lineHeight: 22,
+    color: Colors.textMuted,
+  },
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  statNumber: {
+    fontFamily: Fonts.serif,
+    fontSize: 28,
+    lineHeight: 28,
+    letterSpacing: -0.5,
+    color: Colors.textPrimary,
+  },
+  statNumberLarge: {
+    fontFamily: Fonts.serif,
+    fontSize: 32,
+    lineHeight: 32,
+    letterSpacing: -0.5,
+    color: Colors.primary,
+  },
+  statLabel: {
+    fontFamily: Fonts.monoMedium,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: Colors.textFaint,
+  },
+
+  // ── Tags / pills (Geist Mono uppercase) ──────────────────────────────────
+  tag: {
+    fontFamily: Fonts.monoMedium,
+    fontSize: 9,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+  },
 };
 
 export const Spacing = {
@@ -94,250 +310,27 @@ export const Radius = {
   full: 999,
 };
 
-// ─── Typography System ──────────────────────────────────────────────────────
-// One source of truth for every text role in the app.
-//
-// Playfair Display (serif) → editorial moments: brand, screen titles, hero
-//   titles, section titles, card headlines, empty-state titles, hero numerals.
-// Inter (sans-serif) → readability moments: body, secondary text, captions,
-//   metadata, form fields, buttons, tab labels, stat counters, errors.
-//
-// Hierarchy is created through font family + size + spacing + color — not by
-// pushing weight to bold. Editorial type uses Playfair's intrinsic weight;
-// UI type uses Inter Medium / SemiBold sparingly.
-import type { TextStyle } from 'react-native';
-
-export const TextStyles: Record<string, TextStyle> = {
-  // ── EDITORIAL (Playfair Display) ─────────────────────────────────────────
-  appTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 32,
-    lineHeight: 38,
-    letterSpacing: -0.5,
-    color: Colors.textPrimary,
-  },
-  screenTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 30,
-    lineHeight: 36,
-    letterSpacing: -0.4,
-    color: Colors.textPrimary,
-  },
-  heroTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 28,
-    lineHeight: 34,
-    letterSpacing: -0.3,
-    color: Colors.textPrimary,
-  },
-  sectionTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 22,
-    lineHeight: 28,
-    letterSpacing: -0.2,
-    color: Colors.textPrimary,
-  },
-  cardTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 20,
-    lineHeight: 26,
-    letterSpacing: -0.2,
-    color: Colors.textPrimary,
-  },
-  cardTitleSmall: {
-    fontFamily: Fonts.serif,
-    fontSize: 17,
-    lineHeight: 22,
-    color: Colors.textPrimary,
-  },
-  emptyTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 20,
-    lineHeight: 26,
-    color: Colors.textPrimary,
-  },
-  displayNumber: {
-    fontFamily: Fonts.serif,
-    fontSize: 44,
-    lineHeight: 48,
-    letterSpacing: -1,
-    color: Colors.primary,
-  },
-  tagline: {
-    fontFamily: Fonts.serifItalic,
-    fontSize: 15,
-    lineHeight: 22,
-    color: Colors.textSecondary,
-  },
-
-  // ── READABILITY (Inter) ──────────────────────────────────────────────────
-  body: {
-    fontFamily: Fonts.sans,
-    fontSize: 15,
-    lineHeight: 23,
-    color: Colors.textPrimary,
-  },
-  bodySecondary: {
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-    lineHeight: 22,
-    color: Colors.textSecondary,
-  },
-  helper: {
-    fontFamily: Fonts.sans,
-    fontSize: 13,
-    lineHeight: 19,
-    color: Colors.textSecondary,
-  },
-  caption: {
-    fontFamily: Fonts.sans,
-    fontSize: 12,
-    lineHeight: 16,
-    color: Colors.textMuted,
-  },
-  meta: {
-    fontFamily: Fonts.sans,
-    fontSize: 11,
-    lineHeight: 15,
-    color: Colors.textMuted,
-  },
-
-  // Overline / kicker (Inter, uppercase, primary accent)
-  kicker: {
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 10,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    color: Colors.primary,
-  },
-  overline: {
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 10,
-    letterSpacing: 1.8,
-    textTransform: 'uppercase',
-    color: Colors.primary,
-  },
-
-  // Forms
-  inputLabel: {
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 12,
-    letterSpacing: 0.3,
-    color: Colors.textPrimary,
-  },
-  inputValue: {
-    fontFamily: Fonts.sans,
-    fontSize: 15,
-    color: Colors.textPrimary,
-  },
-  inputHelper: {
-    fontFamily: Fonts.sans,
-    fontSize: 12,
-    lineHeight: 17,
-    color: Colors.textSecondary,
-  },
-  error: {
-    fontFamily: Fonts.sansMedium,
-    fontSize: 12,
-    color: '#DC2626',
-  },
-
-  // Buttons
-  buttonPrimary: {
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 14,
-    letterSpacing: 0.4,
-    color: Colors.white,
-  },
-  buttonSecondary: {
-    fontFamily: Fonts.sansMedium,
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: Colors.primary,
-  },
-  buttonGhost: {
-    fontFamily: Fonts.sansMedium,
-    fontSize: 13,
-    color: Colors.primary,
-  },
-
-  // Tab bar
-  tabLabel: {
-    fontFamily: Fonts.sansMedium,
-    fontSize: 11,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: Colors.textMuted,
-  },
-  tabLabelActive: {
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 11,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: Colors.primary,
-  },
-
-  // Empty states
-  emptyDescription: {
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-    lineHeight: 21,
-    color: Colors.textSecondary,
-  },
-
-  // Stats — Inter for tabular feel
-  statNumber: {
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 24,
-    color: Colors.textPrimary,
-    letterSpacing: -0.3,
-  },
-  statNumberLarge: {
-    fontFamily: Fonts.serif,
-    fontSize: 32,
-    color: Colors.primary,
-    letterSpacing: -0.4,
-  },
-  statLabel: {
-    fontFamily: Fonts.sansMedium,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: Colors.textMuted,
-  },
-
-  // Tags / Pills (Inter, restrained uppercase)
-  tag: {
-    fontFamily: Fonts.sansMedium,
-    fontSize: 10,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: Colors.textSecondary,
-  },
-};
-
-// Soft, delicate shadows — gently lift surfaces off the cream canvas
+// Soft, warm shadows — barely there. Atelier relies on tonal contrast more than depth.
 export const Shadow = {
   sm: {
-    shadowColor: '#0F172A',
+    shadowColor: '#241C12',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 3,
     elevation: 1,
   },
   md: {
-    shadowColor: '#0F172A',
+    shadowColor: '#241C12',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
   lg: {
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowColor: '#241C12',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.10,
+    shadowRadius: 18,
+    elevation: 5,
   },
 };

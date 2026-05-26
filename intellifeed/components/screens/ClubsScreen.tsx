@@ -9,6 +9,7 @@ import {
   Image,
   FlatList,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
 import { CLUBS, Club } from '../../constants/MockData';
 
@@ -22,10 +23,12 @@ const LEVEL_LABELS: Record<string, string> = {
 const USER_SCORE = 2847;
 
 function ClubCard({ club, onJoin }: { club: Club; onJoin: () => void }) {
+  const router = useRouter();
   const canJoin = USER_SCORE >= club.requiredScore;
+  const openClub = () => router.push({ pathname: '/club/[id]', params: { id: club.id } });
 
   return (
-    <View style={styles.clubCard}>
+    <TouchableOpacity activeOpacity={0.92} onPress={openClub} style={styles.clubCard}>
       <View style={styles.imageWrap}>
         <Image source={{ uri: club.image }} style={styles.clubImage} />
         <View style={styles.imageOverlay} />
@@ -93,12 +96,12 @@ function ClubCard({ club, onJoin }: { club: Club; onJoin: () => void }) {
         )}
 
         {club.isJoined && (
-          <TouchableOpacity style={styles.activeBtn}>
+          <TouchableOpacity style={styles.activeBtn} onPress={openClub}>
             <Text style={styles.activeBtnText}>Enter Discourse</Text>
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -123,7 +126,9 @@ export default function ClubsScreen() {
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={TextStyles.kicker}>Curated Intelligence</Text>
-          <Text style={[TextStyles.screenTitle, { marginTop: 4 }]}>Clubs</Text>
+          <Text style={[TextStyles.screenTitle, { marginTop: 4 }]}>
+            Clubs<Text style={{ color: Colors.primary }}>.</Text>
+          </Text>
           <Text style={[TextStyles.tagline, { marginTop: 6 }]}>Engage in high-level discourse.</Text>
         </View>
         <View style={styles.scoreBadge}>

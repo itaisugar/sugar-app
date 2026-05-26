@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
 import { PLAN_ITEMS, PlanItem, PlanStep } from '../../constants/MockData';
 
@@ -51,12 +52,14 @@ function StepRow({ step, onToggle }: { step: PlanStep; onToggle: () => void }) {
 }
 
 function PlanCard({ plan, onStepToggle }: { plan: PlanItem; onStepToggle: (planId: string, stepId: string) => void }) {
+  const router = useRouter();
   const [expanded, setExpanded] = useState(plan.id === 'p1');
   const completedSteps = plan.steps.filter(s => s.isCompleted).length;
+  const openDetail = () => router.push({ pathname: '/plan-detail/[id]', params: { id: plan.id } });
 
   return (
     <View style={styles.planCard}>
-      <TouchableOpacity style={styles.planHeader} onPress={() => setExpanded(!expanded)}>
+      <TouchableOpacity style={styles.planHeader} onPress={openDetail} onLongPress={() => setExpanded(!expanded)}>
         <View style={{ flex: 1 }}>
           <Text style={styles.planType}>{TYPE_LABELS[plan.type]}</Text>
           <Text style={TextStyles.cardTitle}>{plan.title}</Text>
@@ -136,7 +139,9 @@ export default function PlanScreen() {
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={TextStyles.kicker}>From Theory to Action</Text>
-            <Text style={[TextStyles.screenTitle, { marginTop: 4 }]}>Plan</Text>
+            <Text style={[TextStyles.screenTitle, { marginTop: 4 }]}>
+              Plan<Text style={{ color: Colors.primary }}>.</Text>
+            </Text>
             <Text style={[TextStyles.tagline, { marginTop: 6 }]}>Convert insights into concrete steps.</Text>
           </View>
           <TouchableOpacity style={styles.addBtn}>

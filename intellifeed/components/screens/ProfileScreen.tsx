@@ -252,13 +252,15 @@ export default function ProfileScreen() {
             <Text style={[TextStyles.tagline, { marginTop: 4 }]}>
               An evolving map of your intellectual depth.
             </Text>
-            <View style={styles.sectionEmpty}>
-              <Text style={TextStyles.emptyTitle}>Begin reading to grow your tree</Text>
+            <TouchableOpacity style={styles.sectionEmpty} onPress={() => router.push('/tree')} activeOpacity={0.85}>
+              <Text style={TextStyles.emptyTitle}>Open your canopy</Text>
               <Text style={[TextStyles.emptyDescription, { textAlign: 'center' }]}>
-                Each article and podcast you engage with contributes to a domain in your personal
-                knowledge map. Your tree appears here once you've engaged across multiple categories.
+                A radial view of every domain you've engaged with. Tap to enter.
               </Text>
-            </View>
+              <View style={styles.openTreeBtn}>
+                <Text style={TextStyles.buttonSecondary}>Open tree  →</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -390,6 +392,15 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     alignItems: 'center',
     gap: 8,
+  },
+  openTreeBtn: {
+    marginTop: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryGlow,
   },
   sectionEmptyTitle: {
     fontSize: 16,

@@ -35,19 +35,21 @@ export function AuthShell({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.brand}>
-            <Text style={TextStyles.appTitle}>Sapiens</Text>
-            <Text style={[TextStyles.tagline, { marginTop: 6 }]}>
-              Upgrade Your Cognitive Diet.
+            <Text style={TextStyles.appTitle}>
+              Sapiens<Text style={{ color: Colors.primary }}>.</Text>
+            </Text>
+            <Text style={[TextStyles.tagline, { marginTop: 8 }]}>
+              An exclusive library for the relentlessly curious.
             </Text>
           </View>
 
           <View style={styles.card}>
             {kicker ? (
-              <Text style={[TextStyles.kicker, { marginBottom: 8 }]}>{kicker}</Text>
+              <Text style={[TextStyles.kicker, { marginBottom: 10 }]}>{kicker}</Text>
             ) : null}
             <Text style={TextStyles.heroTitle}>{title}</Text>
             {subtitle ? (
-              <Text style={[TextStyles.bodySecondary, { marginTop: 10 }]}>{subtitle}</Text>
+              <Text style={[TextStyles.body, { marginTop: 12 }]}>{subtitle}</Text>
             ) : null}
 
             <View style={styles.form}>{children}</View>
@@ -78,7 +80,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
-    ...Shadow.md,
+    ...Shadow.sm,
   },
   form: {
     marginTop: Spacing.lg,

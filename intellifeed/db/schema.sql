@@ -29,6 +29,9 @@ alter table public.profiles add column if not exists date_of_birth date;
 -- Editorial role flag — set manually for trusted accounts
 alter table public.profiles add column if not exists is_admin boolean default false;
 
+-- Audio URL for podcast episodes (idempotent ALTER)
+alter table public.content_items add column if not exists audio_url text;
+
 -- 2. ROLE GRANTS ─────────────────────────────────────────────────────────────
 -- RLS alone does not grant table access; explicit grants are required.
 grant usage on schema public to anon, authenticated;
@@ -107,6 +110,7 @@ create table if not exists public.content_items (
   podcast_duration  integer,                                  -- seconds (nullable)
   image_url         text,
   content_url       text,                                     -- link to original
+  audio_url         text,                                     -- direct MP3 from RSS (nullable)
   content_source    text default 'curated',                   -- curated | featured | community
   content_type      text default 'article',                   -- article | podcast | research | book
   tags              text[] default '{}'::text[],

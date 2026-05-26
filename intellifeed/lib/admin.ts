@@ -35,6 +35,7 @@ export type NewContentItem = {
   read_time: number;
   image_url: string;
   content_url: string;
+  audio_url?: string | null;
   content_source?: 'curated' | 'featured' | 'community';
   content_type?: 'article' | 'podcast' | 'research' | 'book' | 'insight';
   tags: string[];
@@ -53,6 +54,7 @@ export async function createContentItem(item: NewContentItem) {
       read_time: item.read_time,
       image_url: item.image_url,
       content_url: item.content_url,
+      audio_url: item.audio_url ?? null,
       content_source: item.content_source ?? 'curated',
       content_type: item.content_type ?? 'article',
       tags: item.tags,

@@ -3,21 +3,29 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { useEffect } from 'react';
 import {
-  useFonts as usePlayfair,
-  PlayfairDisplay_400Regular,
-  PlayfairDisplay_700Bold,
-  PlayfairDisplay_400Regular_Italic,
-} from '@expo-google-fonts/playfair-display';
+  useFonts as useNewsreader,
+  Newsreader_400Regular,
+  Newsreader_500Medium,
+  Newsreader_600SemiBold,
+  Newsreader_400Regular_Italic,
+  Newsreader_500Medium_Italic,
+} from '@expo-google-fonts/newsreader';
 import {
-  useFonts as useInter,
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from '@expo-google-fonts/inter';
+  useFonts as useManrope,
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+} from '@expo-google-fonts/manrope';
+import {
+  useFonts as useGeistMono,
+  GeistMono_400Regular,
+  GeistMono_500Medium,
+} from '@expo-google-fonts/geist-mono';
 import { Colors } from '../constants/Theme';
 import { AuthProvider, useAuth } from '../lib/AuthContext';
 import { ProfileProvider, useProfile } from '../lib/ProfileContext';
+import { PodcastPlayerProvider } from '../lib/PodcastPlayerContext';
 
 export {
   ErrorBoundary,
@@ -40,22 +48,18 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const inAuthGroup = group === '(auth)';
     const inOnboardingGroup = group === '(onboarding)';
 
-    // Unauthenticated → force into auth flow
     if (!session) {
       if (!inAuthGroup) router.replace('/(auth)/login');
       return;
     }
 
-    // Authenticated → wait for profile to load before routing decisions
     if (profileLoading) return;
 
-    // Authenticated but not yet onboarded → force onboarding
     if (profile && !profile.onboarded) {
       if (!inOnboardingGroup) router.replace('/(onboarding)/welcome');
       return;
     }
 
-    // Authenticated and onboarded → keep them out of auth/onboarding screens
     if (inAuthGroup || inOnboardingGroup) {
       router.replace('/(tabs)');
     }
@@ -73,19 +77,25 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-  const [playfairLoaded] = usePlayfair({
-    PlayfairDisplay_400Regular,
-    PlayfairDisplay_700Bold,
-    PlayfairDisplay_400Regular_Italic,
+  const [newsreaderLoaded] = useNewsreader({
+    Newsreader_400Regular,
+    Newsreader_500Medium,
+    Newsreader_600SemiBold,
+    Newsreader_400Regular_Italic,
+    Newsreader_500Medium_Italic,
   });
-  const [interLoaded] = useInter({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
+  const [manropeLoaded] = useManrope({
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+  });
+  const [monoLoaded] = useGeistMono({
+    GeistMono_400Regular,
+    GeistMono_500Medium,
   });
 
-  if (!playfairLoaded || !interLoaded) {
+  if (!newsreaderLoaded || !manropeLoaded || !monoLoaded) {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator color={Colors.primary} />
@@ -96,22 +106,24 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ProfileProvider>
-        <View style={{ flex: 1, backgroundColor: Colors.background }}>
-          <StatusBar style="dark" />
-          <AuthGate>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: Colors.background },
-                animation: 'fade',
-              }}
-            >
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-            </Stack>
-          </AuthGate>
-        </View>
+        <PodcastPlayerProvider>
+          <View style={{ flex: 1, backgroundColor: Colors.background }}>
+            <StatusBar style="dark" />
+            <AuthGate>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: Colors.background },
+                  animation: 'fade',
+                }}
+              >
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+              </Stack>
+            </AuthGate>
+          </View>
+        </PodcastPlayerProvider>
       </ProfileProvider>
     </AuthProvider>
   );

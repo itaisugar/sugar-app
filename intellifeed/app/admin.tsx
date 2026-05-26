@@ -100,6 +100,7 @@ export default function AdminScreen() {
         read_time: parseInt(readTime, 10) || 5,
         image_url: imageUrl.trim(),
         content_url: contentUrl.trim(),
+        content_type: /spotify\.com/i.test(contentUrl) ? 'podcast' : 'article',
         tags: tagsInput
           .split(',')
           .map((t) => t.trim())
@@ -255,9 +256,10 @@ export default function AdminScreen() {
                     autoCorrect={false}
                   />
                   <Field
-                    label="Article URL"
+                    label="Article or Spotify URL"
                     value={contentUrl}
                     onChangeText={setContentUrl}
+                    placeholder="https://open.spotify.com/episode/…"
                     autoCapitalize="none"
                     autoCorrect={false}
                   />

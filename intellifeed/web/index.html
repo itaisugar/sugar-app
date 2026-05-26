@@ -417,8 +417,8 @@
         <input id="fImage" type="url" />
       </div>
       <div class="field">
-        <label for="fContentUrl">Article URL</label>
-        <input id="fContentUrl" type="url" />
+        <label for="fContentUrl">Article or Spotify URL</label>
+        <input id="fContentUrl" type="url" placeholder="https://open.spotify.com/episode/…" />
       </div>
 
       <button class="btn-primary" id="publishBtn">Publish to Feed</button>
@@ -682,7 +682,7 @@ $('publishBtn').addEventListener('click', async () => {
     image_url: $('fImage').value.trim(),
     content_url: $('fContentUrl').value.trim(),
     content_source: 'curated',
-    content_type: 'article',
+    content_type: /spotify\.com/i.test($('fContentUrl').value) ? 'podcast' : 'article',
     tags: $('fTags').value.split(',').map(s => s.trim()).filter(Boolean),
   };
   if (!item.title || !item.summary || !item.source || !item.category) {

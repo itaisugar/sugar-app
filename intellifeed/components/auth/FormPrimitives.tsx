@@ -135,14 +135,14 @@ const styles = StyleSheet.create({
   primaryBtn: {
     height: 48,
     backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
+    borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 6,
   },
   primaryBtnDisabled: {
     backgroundColor: Colors.primaryDark,
-    opacity: 0.6,
+    opacity: 0.55,
   },
   ghostBtn: {
     alignItems: 'center',

@@ -68,7 +68,9 @@ export default function OnboardingWelcome() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={[TextStyles.kicker, { marginBottom: 8 }]}>Welcome to Sapiens</Text>
+          <Text style={[TextStyles.kicker, { marginBottom: 8 }]}>
+            Welcome to Sapiens
+          </Text>
           <Text style={TextStyles.heroTitle}>Curate Your Cognitive Diet</Text>
           <Text style={[TextStyles.body, { marginTop: 10, marginBottom: Spacing.xl, color: Colors.textSecondary }]}>
             A few moments of intention now will shape every recommendation we surface.
@@ -223,25 +225,24 @@ const styles = StyleSheet.create({
   },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 9,
     borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    backgroundColor: Colors.surface,
+    borderWidth: 0.5,
+    borderColor: Colors.surfaceBorderStrong,
+    backgroundColor: Colors.transparent,
   },
   chipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.textPrimary,
+    borderColor: Colors.textPrimary,
   },
   chipText: {
-    fontSize: 13,
-    fontFamily: Fonts.sansMedium,
+    fontSize: 14,
+    fontFamily: Fonts.serifRegular,
     color: Colors.textPrimary,
-    letterSpacing: 0.3,
   },
   chipTextActive: {
-    color: Colors.white,
-    fontFamily: Fonts.sansSemibold,
+    color: Colors.surface,
+    fontFamily: Fonts.serifRegular,
   },
   selectedCount: {
     fontSize: 11,
