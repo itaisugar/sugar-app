@@ -1,0 +1,17 @@
+# Secrets
+intellifeed/.env
+intellifeed/.env.local
+intellifeed/.env*.local
+
+# Dependencies & build artifacts
+intellifeed/node_modules/
+intellifeed/.expo/
+intellifeed/dist/
+intellifeed/web-build/
+intellifeed/expo-env.d.ts
+
+# OS
+.DS_Store
+
+# Parent-level junk
+node_modules/
