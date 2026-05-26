@@ -1,12 +1,12 @@
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
-import { Colors, Typography, Fonts } from '../../constants/Theme';
+import { Colors, TextStyles } from '../../constants/Theme';
 
 function TabIcon({ focused, label }: { focused: boolean; label: string }) {
   return (
-    <View style={[styles.tabItem, focused && styles.tabItemFocused]}>
-      <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]}>{label}</Text>
-      {focused && <View style={styles.activeIndicator} />}
+    <View style={styles.tabItem}>
+      <Text style={focused ? TextStyles.tabLabelActive : TextStyles.tabLabel}>{label}</Text>
+      {focused ? <View style={styles.activeIndicator} /> : <View style={styles.indicatorSpacer} />}
     </View>
   );
 }
@@ -59,32 +59,23 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.surfaceBorder,
     height: 78,
     paddingBottom: 10,
-    paddingTop: 10,
+    paddingTop: 8,
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
-    paddingVertical: 6,
+    paddingVertical: 4,
     minWidth: 60,
-    position: 'relative',
-  },
-  tabItemFocused: {},
-  tabLabel: {
-    fontSize: 11,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  tabLabelFocused: {
-    color: Colors.primary,
-    fontFamily: Fonts.sansSemibold,
+    gap: 6,
   },
   activeIndicator: {
-    marginTop: 6,
-    width: 16,
+    width: 14,
     height: 1.5,
     backgroundColor: Colors.primary,
+  },
+  indicatorSpacer: {
+    width: 14,
+    height: 1.5,
   },
 });

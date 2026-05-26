@@ -4,7 +4,7 @@ import { Colors } from '../constants/Theme';
 export default function ModalScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>InteliFeed</Text>
+      <Text style={styles.title}>Sapiens</Text>
     </View>
   );
 }

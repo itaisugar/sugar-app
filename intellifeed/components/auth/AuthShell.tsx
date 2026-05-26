@@ -8,7 +8,7 @@ import {
   ScrollView,
   SafeAreaView,
 } from 'react-native';
-import { Colors, Spacing, Radius, Fonts, Shadow } from '../../constants/Theme';
+import { Colors, Spacing, Radius, TextStyles, Shadow } from '../../constants/Theme';
 
 export function AuthShell({
   kicker,
@@ -35,14 +35,20 @@ export function AuthShell({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.brand}>
-            <Text style={styles.brandMark}>InteliFeed</Text>
-            <Text style={styles.brandTag}>Upgrade Your Cognitive Diet.</Text>
+            <Text style={TextStyles.appTitle}>Sapiens</Text>
+            <Text style={[TextStyles.tagline, { marginTop: 6 }]}>
+              Upgrade Your Cognitive Diet.
+            </Text>
           </View>
 
           <View style={styles.card}>
-            {kicker ? <Text style={styles.kicker}>{kicker}</Text> : null}
-            <Text style={styles.title}>{title}</Text>
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+            {kicker ? (
+              <Text style={[TextStyles.kicker, { marginBottom: 8 }]}>{kicker}</Text>
+            ) : null}
+            <Text style={TextStyles.heroTitle}>{title}</Text>
+            {subtitle ? (
+              <Text style={[TextStyles.bodySecondary, { marginTop: 10 }]}>{subtitle}</Text>
+            ) : null}
 
             <View style={styles.form}>{children}</View>
           </View>
@@ -66,18 +72,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.xl,
   },
-  brandMark: {
-    fontSize: 32,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-    letterSpacing: -0.5,
-  },
-  brandTag: {
-    fontSize: 13,
-    fontFamily: Fonts.serifItalic,
-    color: Colors.textSecondary,
-    marginTop: 6,
-  },
   card: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
@@ -85,27 +79,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
     ...Shadow.md,
-  },
-  kicker: {
-    fontSize: 10,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.primary,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 26,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: Fonts.sans,
-    color: Colors.textSecondary,
-    marginTop: 8,
-    lineHeight: 22,
   },
   form: {
     marginTop: Spacing.lg,

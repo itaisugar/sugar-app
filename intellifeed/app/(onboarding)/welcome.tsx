@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, Radius, Fonts, Shadow } from '../../constants/Theme';
+import { Colors, Spacing, Radius, Fonts, Shadow, TextStyles } from '../../constants/Theme';
 import { Field, PrimaryButton, Banner } from '../../components/auth/FormPrimitives';
 import { useAuth } from '../../lib/AuthContext';
 import { useProfile } from '../../lib/ProfileContext';
@@ -68,20 +68,22 @@ export default function OnboardingWelcome() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.kicker}>Welcome to InteliFeed</Text>
-          <Text style={styles.title}>Curate Your Cognitive Diet</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[TextStyles.kicker, { marginBottom: 8 }]}>Welcome to Sapiens</Text>
+          <Text style={TextStyles.heroTitle}>Curate Your Cognitive Diet</Text>
+          <Text style={[TextStyles.body, { marginTop: 10, marginBottom: Spacing.xl, color: Colors.textSecondary }]}>
             A few moments of intention now will shape every recommendation we surface.
           </Text>
 
           <View style={styles.card}>
-            <Text style={styles.sectionLabel}>Your Name</Text>
-            <Text style={styles.sectionHint}>How would you like to be addressed?</Text>
+            <Text style={TextStyles.overline}>Your Name</Text>
+            <Text style={[TextStyles.helper, { marginTop: 4, marginBottom: 14 }]}>
+              How would you like to be addressed?
+            </Text>
             <Field
               label=""
               value={fullName}
               onChangeText={setFullName}
-              placeholder="Itai Bell"
+              placeholder=""
               autoCapitalize="words"
               autoComplete="name"
               textContentType="name"
@@ -89,15 +91,15 @@ export default function OnboardingWelcome() {
 
             {user?.email ? (
               <View style={styles.emailRow}>
-                <Text style={styles.emailLabel}>Account</Text>
-                <Text style={styles.emailValue}>{user.email}</Text>
+                <Text style={TextStyles.statLabel}>Account</Text>
+                <Text style={[TextStyles.helper, { color: Colors.textSecondary }]}>{user.email}</Text>
               </View>
             ) : null}
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionLabel}>Domains of Interest</Text>
-            <Text style={styles.sectionHint}>
+            <Text style={TextStyles.overline}>Domains of Interest</Text>
+            <Text style={[TextStyles.helper, { marginTop: 4 }]}>
               Select at least three. You can refine these anytime in your profile.
             </Text>
 
@@ -119,7 +121,7 @@ export default function OnboardingWelcome() {
               })}
             </View>
 
-            <Text style={styles.selectedCount}>
+            <Text style={[TextStyles.meta, { marginTop: 12, textAlign: 'right' }]}>
               {interests.length} selected
             </Text>
           </View>

@@ -94,6 +94,229 @@ export const Radius = {
   full: 999,
 };
 
+// ─── Typography System ──────────────────────────────────────────────────────
+// One source of truth for every text role in the app.
+//
+// Playfair Display (serif) → editorial moments: brand, screen titles, hero
+//   titles, section titles, card headlines, empty-state titles, hero numerals.
+// Inter (sans-serif) → readability moments: body, secondary text, captions,
+//   metadata, form fields, buttons, tab labels, stat counters, errors.
+//
+// Hierarchy is created through font family + size + spacing + color — not by
+// pushing weight to bold. Editorial type uses Playfair's intrinsic weight;
+// UI type uses Inter Medium / SemiBold sparingly.
+import type { TextStyle } from 'react-native';
+
+export const TextStyles: Record<string, TextStyle> = {
+  // ── EDITORIAL (Playfair Display) ─────────────────────────────────────────
+  appTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 32,
+    lineHeight: 38,
+    letterSpacing: -0.5,
+    color: Colors.textPrimary,
+  },
+  screenTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 30,
+    lineHeight: 36,
+    letterSpacing: -0.4,
+    color: Colors.textPrimary,
+  },
+  heroTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 28,
+    lineHeight: 34,
+    letterSpacing: -0.3,
+    color: Colors.textPrimary,
+  },
+  sectionTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: -0.2,
+    color: Colors.textPrimary,
+  },
+  cardTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 20,
+    lineHeight: 26,
+    letterSpacing: -0.2,
+    color: Colors.textPrimary,
+  },
+  cardTitleSmall: {
+    fontFamily: Fonts.serif,
+    fontSize: 17,
+    lineHeight: 22,
+    color: Colors.textPrimary,
+  },
+  emptyTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 20,
+    lineHeight: 26,
+    color: Colors.textPrimary,
+  },
+  displayNumber: {
+    fontFamily: Fonts.serif,
+    fontSize: 44,
+    lineHeight: 48,
+    letterSpacing: -1,
+    color: Colors.primary,
+  },
+  tagline: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 15,
+    lineHeight: 22,
+    color: Colors.textSecondary,
+  },
+
+  // ── READABILITY (Inter) ──────────────────────────────────────────────────
+  body: {
+    fontFamily: Fonts.sans,
+    fontSize: 15,
+    lineHeight: 23,
+    color: Colors.textPrimary,
+  },
+  bodySecondary: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    lineHeight: 22,
+    color: Colors.textSecondary,
+  },
+  helper: {
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    lineHeight: 19,
+    color: Colors.textSecondary,
+  },
+  caption: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Colors.textMuted,
+  },
+  meta: {
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    lineHeight: 15,
+    color: Colors.textMuted,
+  },
+
+  // Overline / kicker (Inter, uppercase, primary accent)
+  kicker: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 10,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: Colors.primary,
+  },
+  overline: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 10,
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+    color: Colors.primary,
+  },
+
+  // Forms
+  inputLabel: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 12,
+    letterSpacing: 0.3,
+    color: Colors.textPrimary,
+  },
+  inputValue: {
+    fontFamily: Fonts.sans,
+    fontSize: 15,
+    color: Colors.textPrimary,
+  },
+  inputHelper: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.textSecondary,
+  },
+  error: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 12,
+    color: '#DC2626',
+  },
+
+  // Buttons
+  buttonPrimary: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 14,
+    letterSpacing: 0.4,
+    color: Colors.white,
+  },
+  buttonSecondary: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: Colors.primary,
+  },
+  buttonGhost: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 13,
+    color: Colors.primary,
+  },
+
+  // Tab bar
+  tabLabel: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+  },
+  tabLabelActive: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: Colors.primary,
+  },
+
+  // Empty states
+  emptyDescription: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    lineHeight: 21,
+    color: Colors.textSecondary,
+  },
+
+  // Stats — Inter for tabular feel
+  statNumber: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 24,
+    color: Colors.textPrimary,
+    letterSpacing: -0.3,
+  },
+  statNumberLarge: {
+    fontFamily: Fonts.serif,
+    fontSize: 32,
+    color: Colors.primary,
+    letterSpacing: -0.4,
+  },
+  statLabel: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+  },
+
+  // Tags / Pills (Inter, restrained uppercase)
+  tag: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: Colors.textSecondary,
+  },
+};
+
 // Soft, delicate shadows — gently lift surfaces off the cream canvas
 export const Shadow = {
   sm: {

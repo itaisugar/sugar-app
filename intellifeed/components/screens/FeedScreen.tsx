@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,22 +6,26 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
+  Pressable,
   SafeAreaView,
   TextInput,
   FlatList,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
-import { Colors, Typography, Spacing, Radius, Fonts } from '../../constants/Theme';
-import { FEED_ITEMS, FeedItem } from '../../constants/MockData';
+import * as WebBrowser from 'expo-web-browser';
+import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
 import { useAuth } from '../../lib/AuthContext';
 import { useProfile } from '../../lib/ProfileContext';
+import { fetchContentItems, FeedItem } from '../../lib/content';
 
 const CATEGORIES = ['All', 'Science', 'AI', 'Philosophy', 'Performance', 'Geopolitics', 'Business'];
 
 const SOURCE_LABELS: Record<string, string> = {
-  interest: 'Tailored to Your Interests',
-  social: 'Read by Your Network',
-  followed: 'From Sources You Follow',
-  trending: 'Notable in the Community',
+  curated: "From the Editor's Desk",
+  featured: 'Featured This Week',
+  community: 'Notable in the Community',
 };
 
 function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void; onLike: () => void }) {
@@ -34,53 +38,81 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  const openArticle = async () => {
+    if (!item.contentUrl) {
+      Alert.alert(
+        'Full article unavailable',
+        'A link to the original source has not been attached to this piece yet.',
+      );
+      return;
+    }
+    try {
+      await WebBrowser.openBrowserAsync(item.contentUrl, {
+        toolbarColor: Colors.background,
+        controlsColor: Colors.primary,
+        dismissButtonStyle: 'close',
+      });
+    } catch {
+      Alert.alert('Could not open the article', 'Please try again in a moment.');
+    }
+  };
+
   return (
     <View style={styles.card}>
       {/* Source provenance */}
       <View style={styles.sourceBadge}>
-        <Text style={styles.sourceBadgeText}>{SOURCE_LABELS[item.contentSource]}</Text>
-        {item.friendsWhoRead && (
-          <Text style={styles.friendsText}>
-            {item.friendsWhoRead.join(' · ')}
-          </Text>
-        )}
+        <Text style={styles.sourceBadgeText}>
+          {SOURCE_LABELS[item.contentSource] ?? "From the Editor's Desk"}
+        </Text>
       </View>
 
-      <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
+      {/* Editorial content — tap to open the full article */}
+      <Pressable
+        onPress={openArticle}
+        android_ripple={{ color: Colors.surfaceBorder }}
+        style={({ pressed }) => [pressed && { opacity: 0.92 }]}
+      >
+        <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
 
-      {/* Category + signal */}
-      <View style={styles.cardMeta}>
-        <View style={[styles.categoryPill, { borderColor: item.categoryColor + '60' }]}>
-          <Text style={[styles.categoryText, { color: item.categoryColor }]}>{item.category}</Text>
-        </View>
-        {item.trendingScore && (
-          <View style={styles.trendingBadge}>
-            <Text style={styles.trendingText}>Signal {item.trendingScore}</Text>
+        {/* Category + signal */}
+        <View style={styles.cardMeta}>
+          <View style={[styles.categoryPill, { borderColor: item.categoryColor + '60' }]}>
+            <Text style={[styles.categoryText, { color: item.categoryColor }]}>{item.category}</Text>
           </View>
-        )}
-        <Text style={styles.timestampText}>{item.timestamp}</Text>
-      </View>
+          {item.trendingScore && (
+            <View style={styles.trendingBadge}>
+              <Text style={styles.trendingText}>Signal {item.trendingScore}</Text>
+            </View>
+          )}
+          <Text style={styles.timestampText}>{item.timestamp}</Text>
+        </View>
 
-      <Text style={styles.cardTitle}>{item.title}</Text>
-      <Text style={styles.cardSummary} numberOfLines={4}>{item.summary}</Text>
+        <Text style={[TextStyles.cardTitle, styles.cardTitle]}>{item.title}</Text>
+        <Text style={[TextStyles.bodySecondary, styles.cardSummary]} numberOfLines={4}>{item.summary}</Text>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsRow}>
-        {item.tags.map(tag => (
-          <View key={tag} style={styles.tag}>
-            <Text style={styles.tagText}>{tag}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsRow}>
+          {item.tags.map(tag => (
+            <View key={tag} style={styles.tag}>
+              <Text style={styles.tagText}>{tag}</Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        <View style={styles.sourceRow}>
+          <View style={styles.sourceAvatarBox}>
+            <Text style={styles.sourceAvatar}>{item.sourceAvatar}</Text>
           </View>
-        ))}
-      </ScrollView>
-
-      <View style={styles.sourceRow}>
-        <View style={styles.sourceAvatarBox}>
-          <Text style={styles.sourceAvatar}>{item.sourceAvatar}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sourceName}>{item.source}</Text>
+            <Text style={styles.readTime}>{item.readTime} min read</Text>
+          </View>
+          {item.contentUrl ? (
+            <View style={styles.readMorePill}>
+              <Text style={styles.readMoreText}>Read article  ↗</Text>
+            </View>
+          ) : null}
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.sourceName}>{item.source}</Text>
-          <Text style={styles.readTime}>{item.readTime} min read</Text>
-        </View>
-      </View>
+      </Pressable>
 
       {item.podcastDuration && (
         <TouchableOpacity
@@ -130,7 +162,34 @@ export default function FeedScreen() {
   const { profile } = useProfile();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [items, setItems] = useState(FEED_ITEMS);
+  const [items, setItems] = useState<FeedItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadFeed = useCallback(async () => {
+    setError(null);
+    try {
+      const data = await fetchContentItems();
+      setItems(data);
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not load the feed. Please try again.');
+    }
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      await loadFeed();
+      setLoading(false);
+    })();
+  }, [loadFeed]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadFeed();
+    setRefreshing(false);
+  }, [loadFeed]);
 
   const displayName = profile?.full_name ?? user?.email ?? 'I';
   const initial = displayName.charAt(0).toUpperCase();
@@ -184,10 +243,10 @@ export default function FeedScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerKicker}>
+          <Text style={TextStyles.kicker}>
             {profile?.full_name ? `Welcome, ${profile.full_name.split(' ')[0]}` : 'Knowledge, Distilled'}
           </Text>
-          <Text style={styles.headerTitle}>InteliFeed</Text>
+          <Text style={[TextStyles.appTitle, { marginTop: 4 }]}>Sapiens</Text>
         </View>
         <View style={styles.headerRight}>
           <View style={styles.streakBadge}>
@@ -202,7 +261,7 @@ export default function FeedScreen() {
         </View>
       </View>
 
-      <Text style={styles.tagline}>Upgrade Your Cognitive Diet.</Text>
+      <Text style={[TextStyles.tagline, styles.tagline]}>Upgrade Your Cognitive Diet.</Text>
 
       <View style={styles.searchContainer}>
         <Text style={styles.searchIcon}>⌕</Text>
@@ -235,25 +294,60 @@ export default function FeedScreen() {
         </ScrollView>
       </View>
 
-      <FlatList
-        data={filteredItems}
-        keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 120, gap: 20 }}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <FeedCard
-            item={item}
-            onLike={() => handleLike(item.id)}
-            onSave={() => handleSave(item.id)}
-          />
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No matching insights</Text>
-            <Text style={styles.emptyText}>Try a different category or query.</Text>
-          </View>
-        }
-      />
+      {loading ? (
+        <View style={styles.fullState}>
+          <ActivityIndicator color={Colors.primary} />
+          <Text style={[TextStyles.helper, { marginTop: 12 }]}>Loading the latest…</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.fullState}>
+          <Text style={TextStyles.emptyTitle}>Couldn't load the feed</Text>
+          <Text style={[TextStyles.emptyDescription, { textAlign: 'center', paddingHorizontal: Spacing.xl, marginTop: 8 }]}>
+            {error}
+          </Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={onRefresh}>
+            <Text style={TextStyles.buttonSecondary}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredItems}
+          keyExtractor={item => item.id}
+          contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 120, gap: 20 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={Colors.primary}
+            />
+          }
+          renderItem={({ item }) => (
+            <FeedCard
+              item={item}
+              onLike={() => handleLike(item.id)}
+              onSave={() => handleSave(item.id)}
+            />
+          )}
+          ListEmptyComponent={
+            items.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={TextStyles.emptyTitle}>The library is being curated</Text>
+                <Text style={[TextStyles.emptyDescription, { textAlign: 'center', paddingHorizontal: Spacing.xl, marginTop: 8 }]}>
+                  New essays, podcasts, and research will appear here shortly.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={TextStyles.emptyTitle}>No matching insights</Text>
+                <Text style={[TextStyles.emptyDescription, { marginTop: 8 }]}>
+                  Try a different category or query.
+                </Text>
+              </View>
+            )
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -334,9 +428,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sansBold,
   },
   tagline: {
-    fontFamily: Fonts.serifItalic,
-    fontSize: 15,
-    color: Colors.textSecondary,
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.base,
   },
@@ -465,21 +556,12 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   cardTitle: {
-    fontSize: 22,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    lineHeight: 30,
-    letterSpacing: -0.3,
   },
   cardSummary: {
-    fontSize: 14,
-    fontFamily: Fonts.sans,
-    color: Colors.textSecondary,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    lineHeight: 22,
   },
   tagsRow: {
     paddingHorizontal: Spacing.lg,
@@ -532,6 +614,20 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sans,
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  readMorePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.surfaceBorder,
+    backgroundColor: Colors.surfaceMuted,
+  },
+  readMoreText: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 11,
+    color: Colors.primary,
+    letterSpacing: 0.4,
   },
   podcastPlayer: {
     flexDirection: 'row',
@@ -632,6 +728,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 80,
     gap: 8,
+  },
+  fullState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: 80,
+    gap: 8,
+  },
+  retryBtn: {
+    marginTop: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.primary,
   },
   emptyTitle: {
     fontSize: 20,

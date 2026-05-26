@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, Radius, Fonts } from '../../constants/Theme';
+import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
 import { useAuth } from '../../lib/AuthContext';
 import { useProfile } from '../../lib/ProfileContext';
 
@@ -51,7 +51,7 @@ export default function ProfileScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
-          <Text style={styles.errorTitle}>Couldn't load your profile</Text>
+          <Text style={TextStyles.emptyTitle}>Couldn't load your profile</Text>
           <Text style={styles.statusText}>{profileError}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={refresh}>
             <Text style={styles.retryBtnText}>Try Again</Text>
@@ -66,7 +66,7 @@ export default function ProfileScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
-          <Text style={styles.errorTitle}>No profile found</Text>
+          <Text style={TextStyles.emptyTitle}>No profile found</Text>
           <Text style={styles.statusText}>
             Your profile hasn't been initialized yet. Please sign out and sign back in.
           </Text>
@@ -111,19 +111,21 @@ export default function ProfileScreen() {
       >
         {/* Hero */}
         <View style={styles.hero}>
-          <Text style={styles.kicker}>Your Knowledge Tree</Text>
+          <Text style={TextStyles.kicker}>Your Knowledge Tree</Text>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>
               {(displayName ?? displayEmail ?? 'I').charAt(0).toUpperCase()}
             </Text>
           </View>
-          <Text style={styles.heroName}>{displayName}</Text>
+          <Text style={[TextStyles.screenTitle, { marginTop: Spacing.base }]}>{displayName}</Text>
           <Text style={styles.heroEmail}>{displayEmail}</Text>
           <Text style={styles.heroJoined}>Member since {memberSince}</Text>
           {dobFormatted ? (
             <Text style={styles.heroDob}>Born {dobFormatted}</Text>
           ) : null}
-          <Text style={styles.tagline}>Track your intellectual evolution.</Text>
+          <Text style={[TextStyles.tagline, { marginTop: 12, marginBottom: Spacing.lg }]}>
+            Track your intellectual evolution.
+          </Text>
 
           <TouchableOpacity
             style={styles.editBtn}
@@ -150,7 +152,7 @@ export default function ProfileScreen() {
         <View style={styles.scoreCard}>
           <View style={styles.scoreMain}>
             <Text style={styles.scoreOverline}>CUMULATIVE SCORE</Text>
-            <Text style={styles.scoreBig}>{totalScore.toLocaleString()}</Text>
+            <Text style={TextStyles.displayNumber}>{totalScore.toLocaleString()}</Text>
           </View>
           <View style={styles.scoreDetails}>
             <View style={styles.scoreDetail}>
@@ -219,8 +221,8 @@ export default function ProfileScreen() {
                 { value: plansCompleted, label: 'Plans Executed' },
               ].map(stat => (
                 <View key={stat.label} style={styles.statCard}>
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
+                  <Text style={TextStyles.statNumberLarge}>{stat.value}</Text>
+                  <Text style={[TextStyles.statLabel, { textAlign: 'center', marginTop: 4 }]}>{stat.label}</Text>
                 </View>
               ))}
             </View>
@@ -246,11 +248,13 @@ export default function ProfileScreen() {
 
         {activeSection === 'knowledge' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Knowledge Tree</Text>
-            <Text style={styles.sectionSubtitle}>An evolving map of your intellectual depth.</Text>
+            <Text style={TextStyles.sectionTitle}>Your Knowledge Tree</Text>
+            <Text style={[TextStyles.tagline, { marginTop: 4 }]}>
+              An evolving map of your intellectual depth.
+            </Text>
             <View style={styles.sectionEmpty}>
-              <Text style={styles.sectionEmptyTitle}>Begin reading to grow your tree</Text>
-              <Text style={styles.sectionEmptyText}>
+              <Text style={TextStyles.emptyTitle}>Begin reading to grow your tree</Text>
+              <Text style={[TextStyles.emptyDescription, { textAlign: 'center' }]}>
                 Each article and podcast you engage with contributes to a domain in your personal
                 knowledge map. Your tree appears here once you've engaged across multiple categories.
               </Text>
@@ -260,11 +264,13 @@ export default function ProfileScreen() {
 
         {activeSection === 'badges' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Distinctions Earned</Text>
-            <Text style={styles.sectionSubtitle}>Markers of consistent intellectual practice.</Text>
+            <Text style={TextStyles.sectionTitle}>Distinctions Earned</Text>
+            <Text style={[TextStyles.tagline, { marginTop: 4 }]}>
+              Markers of consistent intellectual practice.
+            </Text>
             <View style={styles.sectionEmpty}>
-              <Text style={styles.sectionEmptyTitle}>No distinctions yet</Text>
-              <Text style={styles.sectionEmptyText}>
+              <Text style={TextStyles.emptyTitle}>No distinctions yet</Text>
+              <Text style={[TextStyles.emptyDescription, { textAlign: 'center' }]}>
                 Sustained practice unlocks recognitions for depth of reading, breadth of interests,
                 and consistency. Yours will appear here as you progress.
               </Text>
@@ -274,11 +280,14 @@ export default function ProfileScreen() {
 
         {/* Settings */}
         <View style={styles.settingsCard}>
-          {[
+          {([
+            ...(dbProfile.is_admin
+              ? [{ label: 'Editorial Desk', onPress: () => router.push('/admin') }]
+              : []),
             { label: 'Account Settings', onPress: () => {} },
             { label: 'Notifications', onPress: () => {} },
-            { label: 'Refine Interests', onPress: () => {} },
-          ].map((item, i, arr) => (
+            { label: 'Refine Interests', onPress: () => router.push('/edit-profile') },
+          ]).map((item, i, arr) => (
             <TouchableOpacity
               key={item.label}
               onPress={item.onPress}
@@ -302,7 +311,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>InteliFeed · Upgrade Your Cognitive Diet</Text>
+          <Text style={styles.footerText}>Sapiens · Upgrade Your Cognitive Diet</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

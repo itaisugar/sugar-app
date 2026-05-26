@@ -7,6 +7,7 @@ export type Profile = {
   date_of_birth: string | null; // ISO date (YYYY-MM-DD)
   interests: string[];
   onboarded: boolean;
+  is_admin: boolean;
   total_score: number;
   weekly_streak: number;
   articles_read: number;

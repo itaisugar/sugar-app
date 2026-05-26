@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
-import { Colors, Spacing, Radius, Fonts, Shadow } from '../constants/Theme';
+import { Colors, Spacing, Radius, Fonts, Shadow, TextStyles } from '../constants/Theme';
 import { Field, PrimaryButton, Banner } from '../components/auth/FormPrimitives';
 import { useAuth } from '../lib/AuthContext';
 import { useProfile } from '../lib/ProfileContext';
@@ -84,7 +84,7 @@ export default function EditProfileScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.centered}>
-          <Text style={styles.emptyText}>Loading your profile…</Text>
+          <Text style={TextStyles.helper}>Loading your profile…</Text>
         </View>
       </SafeAreaView>
     );
@@ -99,9 +99,9 @@ export default function EditProfileScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
-            <Text style={styles.headerBack}>← Cancel</Text>
+            <Text style={TextStyles.buttonGhost}>← Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
+          <Text style={TextStyles.cardTitleSmall}>Edit Profile</Text>
           <View style={{ width: 60 }} />
         </View>
 
@@ -115,8 +115,10 @@ export default function EditProfileScreen() {
 
           {/* Identity */}
           <View style={styles.card}>
-            <Text style={styles.sectionLabel}>Identity</Text>
-            <Text style={styles.sectionHint}>This is how you'll appear across the app.</Text>
+            <Text style={TextStyles.overline}>Identity</Text>
+            <Text style={[TextStyles.helper, { marginTop: 4 }]}>
+              This is how you'll appear across the app.
+            </Text>
 
             <View style={{ marginTop: 12, gap: 14 }}>
               <Field
@@ -130,10 +132,10 @@ export default function EditProfileScreen() {
               />
 
               <View style={{ gap: 6 }}>
-                <Text style={styles.readonlyLabel}>Email</Text>
+                <Text style={TextStyles.inputLabel}>Email</Text>
                 <View style={styles.readonlyField}>
-                  <Text style={styles.readonlyValue}>{user?.email ?? '—'}</Text>
-                  <Text style={styles.readonlyHint}>Read-only</Text>
+                  <Text style={TextStyles.inputValue}>{user?.email ?? '—'}</Text>
+                  <Text style={TextStyles.statLabel}>Read-only</Text>
                 </View>
               </View>
 
@@ -151,8 +153,8 @@ export default function EditProfileScreen() {
 
           {/* Interests */}
           <View style={styles.card}>
-            <Text style={styles.sectionLabel}>Domains of Interest</Text>
-            <Text style={styles.sectionHint}>
+            <Text style={TextStyles.overline}>Domains of Interest</Text>
+            <Text style={[TextStyles.helper, { marginTop: 4 }]}>
               These shape what surfaces in your feed. Tap to toggle.
             </Text>
 
@@ -173,7 +175,9 @@ export default function EditProfileScreen() {
                 );
               })}
             </View>
-            <Text style={styles.selectedCount}>{interests.length} selected</Text>
+            <Text style={[TextStyles.meta, { marginTop: 12, textAlign: 'right' }]}>
+              {interests.length} selected
+            </Text>
           </View>
 
           <View style={{ marginTop: Spacing.base }}>

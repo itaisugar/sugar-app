@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import { Colors, Spacing, Radius, Fonts } from '../../constants/Theme';
+import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
 import { PLAN_ITEMS, PlanItem, PlanStep } from '../../constants/MockData';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -59,7 +59,7 @@ function PlanCard({ plan, onStepToggle }: { plan: PlanItem; onStepToggle: (planI
       <TouchableOpacity style={styles.planHeader} onPress={() => setExpanded(!expanded)}>
         <View style={{ flex: 1 }}>
           <Text style={styles.planType}>{TYPE_LABELS[plan.type]}</Text>
-          <Text style={styles.planTitle}>{plan.title}</Text>
+          <Text style={TextStyles.cardTitle}>{plan.title}</Text>
           <Text style={styles.planSource} numberOfLines={1}>Origin: {plan.sourceItem}</Text>
         </View>
         <Text style={styles.expandIcon}>{expanded ? '−' : '+'}</Text>
@@ -135,9 +135,9 @@ export default function PlanScreen() {
       >
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.kicker}>From Theory to Action</Text>
-            <Text style={styles.headerTitle}>Plan</Text>
-            <Text style={styles.tagline}>Convert insights into concrete steps.</Text>
+            <Text style={TextStyles.kicker}>From Theory to Action</Text>
+            <Text style={[TextStyles.screenTitle, { marginTop: 4 }]}>Plan</Text>
+            <Text style={[TextStyles.tagline, { marginTop: 6 }]}>Convert insights into concrete steps.</Text>
           </View>
           <TouchableOpacity style={styles.addBtn}>
             <Text style={styles.addBtnText}>+ New</Text>
@@ -177,8 +177,8 @@ export default function PlanScreen() {
           ))}
 
           <View style={styles.emptyPrompt}>
-            <Text style={styles.emptyPromptTitle}>Save to Plan</Text>
-            <Text style={styles.emptyPromptText}>
+            <Text style={TextStyles.emptyTitle}>Save to Plan</Text>
+            <Text style={[TextStyles.emptyDescription, { textAlign: 'center' }]}>
               Curate insights from the feed — our AI will transform them into a personalized course of action.
             </Text>
           </View>

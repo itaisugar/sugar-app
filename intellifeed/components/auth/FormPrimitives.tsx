@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { Colors, Spacing, Radius, Fonts } from '../../constants/Theme';
+import { Colors, Spacing, Radius, TextStyles, Fonts } from '../../constants/Theme';
 
 export function Field({
   label,
@@ -18,7 +18,7 @@ export function Field({
   const [focused, setFocused] = React.useState(false);
   return (
     <View style={{ gap: 6 }}>
-      <Text style={styles.label}>{label}</Text>
+      {label ? <Text style={TextStyles.inputLabel}>{label}</Text> : null}
       <TextInput
         {...inputProps}
         onFocus={(e) => {
@@ -32,12 +32,13 @@ export function Field({
         placeholderTextColor={Colors.textMuted}
         style={[
           styles.input,
+          TextStyles.inputValue,
           focused && styles.inputFocused,
           error ? styles.inputError : null,
           inputProps.style,
         ]}
       />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text style={TextStyles.error}>{error}</Text> : null}
     </View>
   );
 }
@@ -64,7 +65,7 @@ export function PrimaryButton({
       {loading ? (
         <ActivityIndicator color={Colors.white} />
       ) : (
-        <Text style={styles.primaryBtnText}>{label}</Text>
+        <Text style={TextStyles.buttonPrimary}>{label}</Text>
       )}
     </TouchableOpacity>
   );
@@ -86,7 +87,7 @@ export function GhostButton({
       activeOpacity={0.7}
       style={styles.ghostBtn}
     >
-      <Text style={styles.ghostBtnText}>{label}</Text>
+      <Text style={TextStyles.buttonGhost}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -117,12 +118,6 @@ export function Banner({
 }
 
 const styles = StyleSheet.create({
-  label: {
-    fontSize: 12,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.textPrimary,
-    letterSpacing: 0.4,
-  },
   input: {
     height: 48,
     borderWidth: 1,
@@ -130,20 +125,12 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: 14,
     backgroundColor: Colors.surface,
-    fontFamily: Fonts.sans,
-    fontSize: 15,
-    color: Colors.textPrimary,
   },
   inputFocused: {
     borderColor: Colors.primary,
   },
   inputError: {
     borderColor: '#DC2626',
-  },
-  errorText: {
-    fontSize: 12,
-    fontFamily: Fonts.sansMedium,
-    color: '#DC2626',
   },
   primaryBtn: {
     height: 48,
@@ -157,21 +144,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryDark,
     opacity: 0.6,
   },
-  primaryBtnText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontFamily: Fonts.sansSemibold,
-    letterSpacing: 0.6,
-  },
   ghostBtn: {
     alignItems: 'center',
     paddingVertical: 10,
-  },
-  ghostBtnText: {
-    color: Colors.primary,
-    fontSize: 13,
-    fontFamily: Fonts.sansSemibold,
-    letterSpacing: 0.3,
   },
   banner: {
     borderWidth: 1,
@@ -179,8 +154,8 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   bannerText: {
-    fontSize: 13,
     fontFamily: Fonts.sansMedium,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 19,
   },
 });

@@ -9,7 +9,7 @@ import {
   Image,
   FlatList,
 } from 'react-native';
-import { Colors, Spacing, Radius, Fonts } from '../../constants/Theme';
+import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
 import { CLUBS, Club } from '../../constants/MockData';
 
 const LEVEL_LABELS: Record<string, string> = {
@@ -45,7 +45,7 @@ function ClubCard({ club, onJoin }: { club: Club; onJoin: () => void }) {
           <Text style={styles.levelText}>{LEVEL_LABELS[club.level]}</Text>
         </View>
 
-        <Text style={styles.clubName}>{club.name}</Text>
+        <Text style={TextStyles.cardTitle}>{club.name}</Text>
         <Text style={styles.clubDesc}>{club.description}</Text>
 
         <View style={styles.statsRow}>
@@ -122,9 +122,9 @@ export default function ClubsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.kicker}>Curated Intelligence</Text>
-          <Text style={styles.headerTitle}>Clubs</Text>
-          <Text style={styles.tagline}>Engage in high-level discourse.</Text>
+          <Text style={TextStyles.kicker}>Curated Intelligence</Text>
+          <Text style={[TextStyles.screenTitle, { marginTop: 4 }]}>Clubs</Text>
+          <Text style={[TextStyles.tagline, { marginTop: 6 }]}>Engage in high-level discourse.</Text>
         </View>
         <View style={styles.scoreBadge}>
           <Text style={styles.scoreLabel}>SCORE</Text>
@@ -182,8 +182,10 @@ export default function ClubsScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No clubs available</Text>
-            <Text style={styles.emptyText}>Continue building your score to unlock further circles.</Text>
+            <Text style={TextStyles.emptyTitle}>No clubs available</Text>
+            <Text style={[TextStyles.emptyDescription, { textAlign: 'center', paddingHorizontal: Spacing.xl }]}>
+              Continue building your score to unlock further circles.
+            </Text>
           </View>
         }
       />
