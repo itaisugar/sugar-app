@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useMemo, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Svg, { Circle, Path, Defs, RadialGradient, Stop, Rect, Line, Text as SvgText } from 'react-native-svg';
 import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../constants/Theme';
 import { useProfile } from '../lib/ProfileContext';
+import { fetchBranchCounts } from '../lib/knowledge';
 
 const ACCENT_PALETTE = [
   Colors.primary,
@@ -15,16 +16,18 @@ const ACCENT_PALETTE = [
   Colors.accentSage,
 ];
 
-// Branches are derived from the user's interests. Until we track real activity,
-// values are seeded deterministically from each interest's name so the
-// canopy looks coherent and personal.
-function deriveBranches(interests: string[]) {
+// Branches are the user's interests; sizes reflect real leaf counts
+// (knowledge_leaves filed under each interest). A new account has all-small
+// branches that grow as the user adds articles to knowledge.
+function deriveBranches(interests: string[], counts: Record<string, number>) {
   return interests.slice(0, 7).map((name, i) => {
-    // Simple deterministic "depth" from name length + index
-    const seed = (name.length * 7 + i * 13) % 30 + 9;
+    const leafCount = counts[name] ?? 0;
+    // Branch "size" mirrors leaf count, with a floor so empty branches still render.
+    const val = Math.max(4, leafCount * 3 + 4);
     return {
       name,
-      val: seed,
+      val,
+      leafCount,
       c: ACCENT_PALETTE[i % ACCENT_PALETTE.length],
     };
   });
@@ -33,8 +36,30 @@ function deriveBranches(interests: string[]) {
 export default function KnowledgeTreeScreen() {
   const router = useRouter();
   const { profile } = useProfile();
-  const branches = useMemo(() => deriveBranches(profile?.interests ?? []), [profile?.interests]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const branches = useMemo(
+    () => deriveBranches(profile?.interests ?? [], counts),
+    [profile?.interests, counts],
+  );
   const [active, setActive] = useState<string | null>(branches[0]?.name ?? null);
+
+  // Refresh counts whenever the screen comes back into focus (e.g. after adding a leaf)
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        try {
+          const c = await fetchBranchCounts();
+          setCounts(c);
+        } catch {}
+        finally { setLoading(false); }
+      })();
+    }, []),
+  );
+
+  useEffect(() => {
+    if (!active && branches.length > 0) setActive(branches[0].name);
+  }, [branches.length]);
 
   const { width: screenW } = Dimensions.get('window');
   const W = screenW;
@@ -192,18 +217,21 @@ export default function KnowledgeTreeScreen() {
         <View style={styles.activeCardHeader}>
           <View style={[styles.activeDot, { backgroundColor: activeNode.c }]} />
           <Text style={[TextStyles.kicker, { color: activeNode.c }]}>
-            {activeNode.name} · {activeNode.val} signals
+            {activeNode.name} · {activeNode.leafCount} {activeNode.leafCount === 1 ? 'leaf' : 'leaves'}
           </Text>
         </View>
         <Text style={[TextStyles.tagline, { marginTop: 6, marginBottom: 14 }]}>
-          Your deepest branch in this domain.
+          {activeNode.leafCount > 0
+            ? `Tap to see everything you've grafted onto ${activeNode.name}.`
+            : `Add articles to this branch from the Reader to grow it.`}
         </Text>
         <View style={styles.activeCardActions}>
-          <TouchableOpacity style={styles.primaryAction}>
-            <Text style={TextStyles.buttonPrimary}>Explore branch</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryAction}>
-            <Text style={TextStyles.buttonSecondary}>Grow adjacent</Text>
+          <TouchableOpacity
+            style={styles.primaryAction}
+            onPress={() => router.push({ pathname: '/tree/[branch]', params: { branch: activeNode.name } })}
+            activeOpacity={0.85}
+          >
+            <Text style={TextStyles.buttonPrimary}>View leaves</Text>
           </TouchableOpacity>
         </View>
       </View>

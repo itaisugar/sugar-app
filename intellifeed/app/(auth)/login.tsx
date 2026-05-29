@@ -33,7 +33,7 @@ export default function LoginScreen() {
   return (
     <AuthShell
       kicker="Welcome Back"
-      title="Sign in to Sapiens"
+      title="Sign in to Sapience"
       subtitle="Continue your daily practice of distilled, high-signal knowledge."
       footer={
         <Text style={styles.footerText}>

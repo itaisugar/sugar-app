@@ -1,43 +1,50 @@
-// ─── The Atelier Theme ───────────────────────────────────────────────────────
-// Editorial luxury. Warm cream paper, terracotta accent, deep ink.
-// Newsreader (serif) for reading and headlines · Manrope (sans) for UI
-// metadata · Geist Mono for kickers and overlines.
+// ─── Theme ───────────────────────────────────────────────────────────────────
+// Color palette: the existing Modern Thinker tones (warm paper background,
+// terracotta accent, deep ink — unchanged).
+//
+// Typography: Inter is the primary family across the whole product.
+// Playfair Display is reserved for the brand mark (the "Sapience" logo) and
+// the occasional editorial hero — it is intentionally rare. The intent is a
+// clean, modern social/product feel (LinkedIn / Facebook readability), not an
+// editorial magazine.
 
 import type { TextStyle } from 'react-native';
 
 export const Colors = {
-  // Surfaces — layered cream tones
-  background: '#F4EDE0',           // warm cream paper
-  backgroundDeep: '#ECE4D3',       // shadowed paper
-  surface: '#FAF6EC',              // raised paper (cards)
-  surfaceElevated: '#FFFFFF',      // crispest paper (modals)
-  surfaceMuted: '#EDE5D0',         // muted overlay
-  surfaceBorder: 'rgba(45,36,24,0.08)',
-  surfaceBorderStrong: 'rgba(45,36,24,0.18)',
+  // Surfaces — clean white canvas with warm cream cards floating on it.
+  // The cards (surface) keep the Atelier warmth so the content blocks read
+  // as a different material from the page itself.
+  background: '#FFFFFF',
+  backgroundDeep: '#F8F5EE',
+  surface: '#F4EDE0',
+  surfaceElevated: '#FAF6EC',
+  surfaceMuted: '#EDE5D0',
+  surfaceBorder: 'rgba(45,36,24,0.10)',
+  surfaceBorderStrong: 'rgba(45,36,24,0.20)',
 
-  // Text — warm ink hierarchy
-  textPrimary: '#241C12',          // deep ink
-  textSecondary: '#3D3326',        // body
-  textMuted: '#6B5D4C',            // captions, metadata
-  textFaint: '#A89070',            // faintest
+  // Text
+  textPrimary: '#241C12',
+  textSecondary: '#3D3326',
+  textMuted: '#6B5D4C',
+  textFaint: '#A89070',
 
-  // Primary — terracotta (signature accent)
+  // Primary — terracotta
   primary: '#7C5234',
-  primaryDark: '#5E3E27',          // hover / pressed
+  primaryDark: '#5E3E27',
   primaryGlow: 'rgba(124,82,52,0.08)',
   primaryGlowStrong: 'rgba(124,82,52,0.16)',
 
   // Secondary accents
-  accentSage: '#4F6346',           // sage green
-  accentOchre: '#8A6B2E',          // warm ochre
-  accentBurgundy: '#A05A4E',       // muted burgundy
+  accentSage: '#4F6346',
+  accentOchre: '#8A6B2E',
+  accentBurgundy: '#A05A4E',
 
   // Functional
   success: '#4F6346',
   warning: '#8A6B2E',
   danger: '#A04638',
 
-  // Category tags — restrained earth tones harmonizing with terracotta
+  // Category tags — restrained earth tones
   tagSport: '#A04638',
   tagScience: '#4F6346',
   tagAI: '#5C6A82',
@@ -53,110 +60,157 @@ export const Colors = {
 };
 
 // ─── Font Families ──────────────────────────────────────────────────────────
+// `sans*` → Inter, used everywhere.
+// `brand`/`brandItalic` → Playfair Display, used only by appTitle (the
+//   "Sapience" logo) and the rare hero brand moment.
+// The serif/mono aliases keep legacy inline `fontFamily: Fonts.serif` usages
+// alive without surprise — they map to Inter equivalents so we get a
+// uniform product look without touching every screen.
 export const Fonts = {
-  // Newsreader — editorial body + headings
-  serif: 'Newsreader_500Medium',
-  serifRegular: 'Newsreader_400Regular',
-  serifSemibold: 'Newsreader_600SemiBold',
-  serifItalic: 'Newsreader_400Regular_Italic',
-  serifItalicMedium: 'Newsreader_500Medium_Italic',
-  // Manrope — UI text
-  sans: 'Manrope_400Regular',
-  sansMedium: 'Manrope_500Medium',
-  sansSemibold: 'Manrope_600SemiBold',
-  sansBold: 'Manrope_700Bold',
-  // Geist Mono — kicker / overline / numerical metadata
-  mono: 'GeistMono_400Regular',
-  monoMedium: 'GeistMono_500Medium',
+  // Primary — Inter
+  sans: 'Inter_400Regular',
+  sansMedium: 'Inter_500Medium',
+  sansSemibold: 'Inter_600SemiBold',
+  sansBold: 'Inter_700Bold',
+
+  // Brand — Playfair Display (rare)
+  brand: 'PlayfairDisplay_700Bold',
+  brandItalic: 'PlayfairDisplay_400Regular_Italic',
+
+  // ── Legacy aliases — point to Inter so existing inline usages get the
+  //    new product feel without per-file edits.
+  serif: 'Inter_700Bold',
+  serifRegular: 'Inter_400Regular',
+  serifSemibold: 'Inter_600SemiBold',
+  serifItalic: 'Inter_400Regular',
+  serifItalicMedium: 'Inter_500Medium',
+  mono: 'Inter_500Medium',
+  monoMedium: 'Inter_600SemiBold',
 };
 
-// ─── Typography System ──────────────────────────────────────────────────────
-// Hierarchy through family + size + spacing + color. Atelier uses Newsreader
-// for editorial moments AND body reading; Manrope for UI/metadata; Geist
-// Mono for kickers (uppercase typographic labels).
+// ─── Typography Tokens ──────────────────────────────────────────────────────
+// One token per role. Hierarchy is built from size + weight + spacing +
+// color — bold is used sparingly. Line heights are generous (1.4-1.5 for
+// body) to match a comfortable scrolling feed.
 
 export const TextStyles: Record<string, TextStyle> = {
-  // ── EDITORIAL (Newsreader) ───────────────────────────────────────────────
+  // ── BRAND (Playfair Display — rare) ─────────────────────────────────────
   appTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 30,
+    fontFamily: Fonts.brand,
+    fontSize: 28,
     lineHeight: 32,
-    letterSpacing: -0.6,
+    letterSpacing: -0.4,
     color: Colors.textPrimary,
   },
-  screenTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 36,
-    lineHeight: 38,
-    letterSpacing: -0.7,
-    color: Colors.textPrimary,
-  },
-  heroTitle: {
-    fontFamily: Fonts.serif,
+  brandHero: {
+    fontFamily: Fonts.brand,
     fontSize: 32,
-    lineHeight: 34,
-    letterSpacing: -0.6,
+    lineHeight: 36,
+    letterSpacing: -0.5,
     color: Colors.textPrimary,
   },
-  sectionTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 22,
+
+  // ── PRODUCT TITLES (Inter) ──────────────────────────────────────────────
+  screenTitle: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 24,
     lineHeight: 28,
     letterSpacing: -0.3,
     color: Colors.textPrimary,
   },
+  heroTitle: {
+    // Used for in-flow hero headlines (onboarding step intros, etc.) — still
+    // Inter, not Playfair, so it feels product-y rather than editorial.
+    fontFamily: Fonts.sansBold,
+    fontSize: 26,
+    lineHeight: 32,
+    letterSpacing: -0.4,
+    color: Colors.textPrimary,
+  },
+  sectionTitle: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: -0.1,
+    color: Colors.textPrimary,
+  },
+
+  // Feed-card titles + small editorial cards
   cardTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 20,
-    lineHeight: 24,
-    letterSpacing: -0.3,
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: -0.2,
     color: Colors.textPrimary,
   },
   cardTitleSmall: {
-    fontFamily: Fonts.serif,
-    fontSize: 17,
-    lineHeight: 22,
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 15,
+    lineHeight: 20,
     color: Colors.textPrimary,
   },
-  emptyTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 20,
+
+  // Aliases that match the requested token names exactly
+  feedTitle: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: -0.2,
+    color: Colors.textPrimary,
+  },
+  articleTitle: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 24,
+    lineHeight: 30,
+    letterSpacing: -0.4,
+    color: Colors.textPrimary,
+  },
+
+  // ── BODY (Inter, generous line heights) ─────────────────────────────────
+  body: {
+    fontFamily: Fonts.sans,
+    fontSize: 16,
+    lineHeight: 24,
+    color: Colors.textPrimary,
+  },
+  bodySecondary: {
+    fontFamily: Fonts.sans,
+    fontSize: 15,
+    lineHeight: 22,
+    color: Colors.textSecondary,
+  },
+  feedBody: {
+    fontFamily: Fonts.sans,
+    fontSize: 15,
+    lineHeight: 22,
+    color: Colors.textSecondary,
+  },
+  articleBody: {
+    fontFamily: Fonts.sans,
+    fontSize: 16,
     lineHeight: 26,
     color: Colors.textPrimary,
   },
-  displayNumber: {
-    fontFamily: Fonts.serif,
-    fontSize: 44,
-    lineHeight: 44,
-    letterSpacing: -1,
-    color: Colors.textPrimary,
-  },
-  tagline: {
-    fontFamily: Fonts.serifItalic,
-    fontSize: 14,
-    lineHeight: 22,
-    color: Colors.textMuted,
-  },
-
-  // Body reading (serif, like an article)
-  body: {
-    fontFamily: Fonts.serifRegular,
+  articleSummary: {
+    fontFamily: Fonts.sansMedium,
     fontSize: 15,
-    lineHeight: 23,
+    lineHeight: 22,
     color: Colors.textSecondary,
   },
-  bodySecondary: {
-    fontFamily: Fonts.serifRegular,
+
+  // Tagline / lede — quiet sans, not decorative italic
+  tagline: {
+    fontFamily: Fonts.sansMedium,
     fontSize: 14,
-    lineHeight: 22,
+    lineHeight: 20,
     color: Colors.textMuted,
   },
 
-  // ── UI / READABILITY (Manrope) ───────────────────────────────────────────
+  // ── METADATA & SECONDARY (Inter) ────────────────────────────────────────
   helper: {
     fontFamily: Fonts.sans,
     fontSize: 13,
-    lineHeight: 19,
+    lineHeight: 18,
     color: Colors.textMuted,
   },
   caption: {
@@ -167,32 +221,106 @@ export const TextStyles: Record<string, TextStyle> = {
   },
   meta: {
     fontFamily: Fonts.sans,
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Colors.textMuted,
+  },
+  metadata: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    lineHeight: 16,
     color: Colors.textMuted,
   },
 
-  // ── KICKERS / OVERLINES (Geist Mono) ─────────────────────────────────────
+  // ── KICKER / OVERLINE (Inter, sparing letter-spacing) ──────────────────
   kicker: {
-    fontFamily: Fonts.monoMedium,
-    fontSize: 10,
-    letterSpacing: 1.8,
-    textTransform: 'uppercase',
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 11,
+    letterSpacing: 0.3,
     color: Colors.primary,
   },
   overline: {
-    fontFamily: Fonts.monoMedium,
-    fontSize: 10,
-    letterSpacing: 1.8,
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 11,
+    letterSpacing: 0.4,
     textTransform: 'uppercase',
-    color: Colors.textFaint,
+    color: Colors.textMuted,
   },
 
-  // ── Forms ─────────────────────────────────────────────────────────────────
-  inputLabel: {
+  // ── PROFILE-SPECIFIC ────────────────────────────────────────────────────
+  profileName: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 22,
+    lineHeight: 26,
+    letterSpacing: -0.3,
+    color: Colors.textPrimary,
+  },
+  profileBio: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    lineHeight: 20,
+    color: Colors.textSecondary,
+  },
+
+  // ── EMPTY STATES ────────────────────────────────────────────────────────
+  emptyTitle: {
     fontFamily: Fonts.sansSemibold,
-    fontSize: 12,
-    letterSpacing: 0.3,
+    fontSize: 17,
+    lineHeight: 22,
+    color: Colors.textPrimary,
+  },
+  emptyDescription: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    lineHeight: 20,
+    color: Colors.textMuted,
+  },
+
+  // ── STATS / NUMBERS ─────────────────────────────────────────────────────
+  displayNumber: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 36,
+    lineHeight: 40,
+    letterSpacing: -0.8,
+    color: Colors.textPrimary,
+  },
+  statsNumber: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 22,
+    lineHeight: 26,
+    color: Colors.textPrimary,
+  },
+  statsLabel: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 11,
+    letterSpacing: 0.2,
+    color: Colors.textMuted,
+  },
+  // Legacy aliases for stat tokens
+  statNumber: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 22,
+    lineHeight: 26,
+    color: Colors.textPrimary,
+  },
+  statNumberLarge: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 28,
+    lineHeight: 32,
+    color: Colors.textPrimary,
+  },
+  statLabel: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 11,
+    letterSpacing: 0.2,
+    color: Colors.textMuted,
+  },
+
+  // ── FORMS (Inter) ───────────────────────────────────────────────────────
+  inputLabel: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 13,
+    letterSpacing: 0.1,
     color: Colors.textPrimary,
   },
   inputValue: {
@@ -202,91 +330,61 @@ export const TextStyles: Record<string, TextStyle> = {
   },
   inputHelper: {
     fontFamily: Fonts.sans,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 18,
     color: Colors.textMuted,
   },
   error: {
     fontFamily: Fonts.sansMedium,
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.danger,
   },
 
-  // ── Buttons ───────────────────────────────────────────────────────────────
+  // ── BUTTONS — sentence case, restrained letter-spacing ──────────────────
+  button: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 15,
+    letterSpacing: 0.1,
+    color: Colors.surface,
+  },
   buttonPrimary: {
     fontFamily: Fonts.sansSemibold,
-    fontSize: 12,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    fontSize: 15,
+    letterSpacing: 0.1,
     color: Colors.surface,
   },
   buttonSecondary: {
     fontFamily: Fonts.sansSemibold,
-    fontSize: 11,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    fontSize: 13,
+    letterSpacing: 0.1,
     color: Colors.primary,
   },
   buttonGhost: {
     fontFamily: Fonts.sansMedium,
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.primary,
   },
 
-  // ── Tab bar ───────────────────────────────────────────────────────────────
+  // ── TAB BAR ─────────────────────────────────────────────────────────────
   tabLabel: {
     fontFamily: Fonts.sansMedium,
-    fontSize: 10,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: Colors.textFaint,
+    fontSize: 11,
+    letterSpacing: 0.2,
+    color: Colors.textMuted,
   },
   tabLabelActive: {
     fontFamily: Fonts.sansSemibold,
-    fontSize: 10,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    fontSize: 11,
+    letterSpacing: 0.2,
     color: Colors.primary,
   },
 
-  // ── Empty states ──────────────────────────────────────────────────────────
-  emptyDescription: {
-    fontFamily: Fonts.serifItalic,
-    fontSize: 14,
-    lineHeight: 22,
-    color: Colors.textMuted,
-  },
-
-  // ── Stats ─────────────────────────────────────────────────────────────────
-  statNumber: {
-    fontFamily: Fonts.serif,
-    fontSize: 28,
-    lineHeight: 28,
-    letterSpacing: -0.5,
-    color: Colors.textPrimary,
-  },
-  statNumberLarge: {
-    fontFamily: Fonts.serif,
-    fontSize: 32,
-    lineHeight: 32,
-    letterSpacing: -0.5,
-    color: Colors.primary,
-  },
-  statLabel: {
-    fontFamily: Fonts.monoMedium,
-    fontSize: 9,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: Colors.textFaint,
-  },
-
-  // ── Tags / pills (Geist Mono uppercase) ──────────────────────────────────
+  // ── TAGS / CATEGORY PILLS ───────────────────────────────────────────────
   tag: {
-    fontFamily: Fonts.monoMedium,
-    fontSize: 9,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: Colors.textMuted,
+    fontFamily: Fonts.sansMedium,
+    fontSize: 11,
+    letterSpacing: 0.2,
+    color: Colors.textSecondary,
   },
 };
 
@@ -310,7 +408,7 @@ export const Radius = {
   full: 999,
 };
 
-// Soft, warm shadows — barely there. Atelier relies on tonal contrast more than depth.
+// Soft shadows — subtle, modern, not editorial.
 export const Shadow = {
   sm: {
     shadowColor: '#241C12',

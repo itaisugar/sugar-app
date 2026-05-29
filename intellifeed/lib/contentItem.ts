@@ -25,6 +25,7 @@ export async function fetchContentItem(id: string): Promise<FeedItem | null> {
   return {
     id: row.id,
     title: row.title,
+    hook: row.hook ?? null,
     summary: row.summary,
     source: row.source,
     sourceAvatar: row.source_avatar ?? '◆',

@@ -3,29 +3,22 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { useEffect } from 'react';
 import {
-  useFonts as useNewsreader,
-  Newsreader_400Regular,
-  Newsreader_500Medium,
-  Newsreader_600SemiBold,
-  Newsreader_400Regular_Italic,
-  Newsreader_500Medium_Italic,
-} from '@expo-google-fonts/newsreader';
+  useFonts as useInter,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from '@expo-google-fonts/inter';
 import {
-  useFonts as useManrope,
-  Manrope_400Regular,
-  Manrope_500Medium,
-  Manrope_600SemiBold,
-  Manrope_700Bold,
-} from '@expo-google-fonts/manrope';
-import {
-  useFonts as useGeistMono,
-  GeistMono_400Regular,
-  GeistMono_500Medium,
-} from '@expo-google-fonts/geist-mono';
+  useFonts as usePlayfair,
+  PlayfairDisplay_700Bold,
+  PlayfairDisplay_400Regular_Italic,
+} from '@expo-google-fonts/playfair-display';
 import { Colors } from '../constants/Theme';
 import { AuthProvider, useAuth } from '../lib/AuthContext';
 import { ProfileProvider, useProfile } from '../lib/ProfileContext';
 import { PodcastPlayerProvider } from '../lib/PodcastPlayerContext';
+import { LanguageProvider } from '../lib/LanguageContext';
 
 export {
   ErrorBoundary,
@@ -77,25 +70,18 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-  const [newsreaderLoaded] = useNewsreader({
-    Newsreader_400Regular,
-    Newsreader_500Medium,
-    Newsreader_600SemiBold,
-    Newsreader_400Regular_Italic,
-    Newsreader_500Medium_Italic,
+  const [interLoaded] = useInter({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
-  const [manropeLoaded] = useManrope({
-    Manrope_400Regular,
-    Manrope_500Medium,
-    Manrope_600SemiBold,
-    Manrope_700Bold,
-  });
-  const [monoLoaded] = useGeistMono({
-    GeistMono_400Regular,
-    GeistMono_500Medium,
+  const [playfairLoaded] = usePlayfair({
+    PlayfairDisplay_700Bold,
+    PlayfairDisplay_400Regular_Italic,
   });
 
-  if (!newsreaderLoaded || !manropeLoaded || !monoLoaded) {
+  if (!interLoaded || !playfairLoaded) {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator color={Colors.primary} />
@@ -106,6 +92,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ProfileProvider>
+       <LanguageProvider>
         <PodcastPlayerProvider>
           <View style={{ flex: 1, backgroundColor: Colors.background }}>
             <StatusBar style="dark" />
@@ -124,6 +111,7 @@ export default function RootLayout() {
             </AuthGate>
           </View>
         </PodcastPlayerProvider>
+       </LanguageProvider>
       </ProfileProvider>
     </AuthProvider>
   );

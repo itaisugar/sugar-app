@@ -49,6 +49,7 @@ export default function AdminScreen() {
 
   // Editable fields (mirrors draft once generated)
   const [title, setTitle] = useState('');
+  const [hook, setHook] = useState('');
   const [summary, setSummary] = useState('');
   const [source, setSource] = useState('');
   const [category, setCategory] = useState('');
@@ -56,6 +57,7 @@ export default function AdminScreen() {
   const [tagsInput, setTagsInput] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [contentUrl, setContentUrl] = useState('');
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const onGenerate = async () => {
@@ -69,6 +71,7 @@ export default function AdminScreen() {
       const result = await summarizeUrl(url.trim());
       setDraft(result);
       setTitle(result.title);
+      setHook(result.hook ?? '');
       setSummary(result.summary);
       setSource(result.source);
       setCategory(result.category);
@@ -76,6 +79,7 @@ export default function AdminScreen() {
       setTagsInput(result.tags.join(', '));
       setImageUrl(result.image_url);
       setContentUrl(result.content_url);
+      setAudioUrl(result.audio_url ?? null);
     } catch (e: any) {
       setError(e?.message ?? 'Could not summarize this URL.');
     } finally {
@@ -93,6 +97,7 @@ export default function AdminScreen() {
     try {
       await createContentItem({
         title: title.trim(),
+        hook: hook.trim() || null,
         summary: summary.trim(),
         source: source.trim(),
         category: category.trim(),
@@ -100,7 +105,12 @@ export default function AdminScreen() {
         read_time: parseInt(readTime, 10) || 5,
         image_url: imageUrl.trim(),
         content_url: contentUrl.trim(),
-        content_type: /spotify\.com/i.test(contentUrl) ? 'podcast' : 'article',
+        audio_url: audioUrl,
+        content_type: /spotify\.com/i.test(contentUrl)
+          ? 'podcast'
+          : /amazon\.[a-z.]+\/|^https?:\/\/a\.co\/|read\.amazon\.com/i.test(contentUrl)
+            ? 'book'
+            : 'article',
         tags: tagsInput
           .split(',')
           .map((t) => t.trim())
@@ -223,11 +233,18 @@ export default function AdminScreen() {
                     multiline
                   />
                   <Field
-                    label="Summary"
+                    label="Hook (feed teaser, 2 sentences)"
+                    value={hook}
+                    onChangeText={setHook}
+                    multiline
+                    style={{ height: 88, paddingTop: 12 }}
+                  />
+                  <Field
+                    label="Summary (detailed, shown inside article)"
                     value={summary}
                     onChangeText={setSummary}
                     multiline
-                    style={{ height: 120, paddingTop: 12 }}
+                    style={{ height: 180, paddingTop: 12 }}
                   />
                   <Field label="Source" value={source} onChangeText={setSource} />
                   <Field
@@ -256,10 +273,10 @@ export default function AdminScreen() {
                     autoCorrect={false}
                   />
                   <Field
-                    label="Article or Spotify URL"
+                    label="Article, Spotify, or Kindle URL"
                     value={contentUrl}
                     onChangeText={setContentUrl}
-                    placeholder="https://open.spotify.com/episode/…"
+                    placeholder="https://open.spotify.com/episode/… or amazon.com/dp/…"
                     autoCapitalize="none"
                     autoCorrect={false}
                   />

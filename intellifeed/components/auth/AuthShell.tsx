@@ -36,7 +36,7 @@ export function AuthShell({
         >
           <View style={styles.brand}>
             <Text style={TextStyles.appTitle}>
-              Sapiens<Text style={{ color: Colors.primary }}>.</Text>
+              Sapience<Text style={{ color: Colors.primary }}>.</Text>
             </Text>
             <Text style={[TextStyles.tagline, { marginTop: 8 }]}>
               An exclusive library for the relentlessly curious.

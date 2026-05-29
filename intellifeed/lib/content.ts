@@ -7,6 +7,7 @@ export type ContentType = 'article' | 'podcast' | 'research' | 'book' | 'insight
 export type ContentItemRow = {
   id: string;
   title: string;
+  hook: string | null;
   summary: string;
   source: string;
   source_avatar: string | null;
@@ -31,6 +32,7 @@ export type ContentItemRow = {
 export type FeedItem = {
   id: string;
   title: string;
+  hook: string | null;
   summary: string;
   source: string;
   sourceAvatar: string;
@@ -69,6 +71,7 @@ function rowToFeedItem(row: ContentItemRow): FeedItem {
   return {
     id: row.id,
     title: row.title,
+    hook: row.hook ?? null,
     summary: row.summary,
     source: row.source,
     sourceAvatar: row.source_avatar ?? '◆',

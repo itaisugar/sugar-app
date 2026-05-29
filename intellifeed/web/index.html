@@ -389,8 +389,12 @@
         <textarea id="fTitle" rows="2"></textarea>
       </div>
       <div class="field">
-        <label for="fSummary">Summary</label>
-        <textarea id="fSummary" rows="4"></textarea>
+        <label for="fHook">Hook — feed teaser (2 sentences, no clickbait)</label>
+        <textarea id="fHook" rows="3"></textarea>
+      </div>
+      <div class="field">
+        <label for="fSummary">Summary — detailed editorial digest (shown inside the article)</label>
+        <textarea id="fSummary" rows="7"></textarea>
       </div>
       <div class="grid-2">
         <div class="field">
@@ -417,8 +421,8 @@
         <input id="fImage" type="url" />
       </div>
       <div class="field">
-        <label for="fContentUrl">Article or Spotify URL</label>
-        <input id="fContentUrl" type="url" placeholder="https://open.spotify.com/episode/…" />
+        <label for="fContentUrl">Article, Spotify, or Kindle URL</label>
+        <input id="fContentUrl" type="url" placeholder="https://open.spotify.com/episode/… or amazon.com/dp/…" />
       </div>
 
       <button class="btn-primary" id="publishBtn">Publish to Feed</button>
@@ -451,6 +455,7 @@ const CATEGORY_COLORS = {
 // ─── State ────────────────────────────────────────────────────────────────
 let session = null;
 let currentPreview = null;
+let currentAudioUrl = null; // audio_url returned by the Edge Function (TTS MP3)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -583,7 +588,9 @@ function escapeHtml(str) {
 // ─── Preview rendering ────────────────────────────────────────────────────
 function updatePreviewFromFields() {
   $('previewTitle').textContent = $('fTitle').value || 'Untitled';
-  $('previewSummary').textContent = $('fSummary').value || '—';
+  // Live preview mirrors what readers see in the feed (the hook), falling back
+  // to the longer summary if no hook has been written yet.
+  $('previewSummary').textContent = $('fHook').value || $('fSummary').value || '—';
   $('previewSource').textContent = $('fSource').value || 'Source';
   $('previewReadTime').textContent = $('fReadTime').value || '?';
   const cat = $('fCategory').value || 'Category';
@@ -607,6 +614,7 @@ function updatePreviewFromFields() {
 
 function fillFieldsFromPreview(p) {
   $('fTitle').value = p.title ?? '';
+  $('fHook').value = p.hook ?? '';
   $('fSummary').value = p.summary ?? '';
   $('fSource').value = p.source ?? '';
   $('fCategory').value = p.category ?? '';
@@ -614,6 +622,7 @@ function fillFieldsFromPreview(p) {
   $('fTags').value = (p.tags ?? []).join(', ');
   $('fImage').value = p.image_url ?? '';
   $('fContentUrl').value = p.content_url ?? '';
+  currentAudioUrl = p.audio_url ?? null;
   updatePreviewFromFields();
 }
 
@@ -673,6 +682,7 @@ $('publishBtn').addEventListener('click', async () => {
   hide('globalSuccess');
   const item = {
     title: $('fTitle').value.trim(),
+    hook: $('fHook').value.trim() || null,
     summary: $('fSummary').value.trim(),
     source: $('fSource').value.trim(),
     source_avatar: '◆',
@@ -681,8 +691,14 @@ $('publishBtn').addEventListener('click', async () => {
     read_time: parseInt($('fReadTime').value, 10) || 5,
     image_url: $('fImage').value.trim(),
     content_url: $('fContentUrl').value.trim(),
+    audio_url: currentAudioUrl,
     content_source: 'curated',
-    content_type: /spotify\.com/i.test($('fContentUrl').value) ? 'podcast' : 'article',
+    content_type: (function () {
+      const u = $('fContentUrl').value;
+      if (/spotify\.com/i.test(u)) return 'podcast';
+      if (/amazon\.[a-z.]+\/|^https?:\/\/a\.co\/|read\.amazon\.com/i.test(u)) return 'book';
+      return 'article';
+    })(),
     tags: $('fTags').value.split(',').map(s => s.trim()).filter(Boolean),
   };
   if (!item.title || !item.summary || !item.source || !item.category) {
@@ -709,7 +725,7 @@ $('publishBtn').addEventListener('click', async () => {
 });
 
 // Live preview updates as you type
-['fTitle','fSummary','fSource','fCategory','fReadTime','fTags','fImage'].forEach(id => {
+['fTitle','fHook','fSummary','fSource','fCategory','fReadTime','fTags','fImage'].forEach(id => {
   $(id)?.addEventListener('input', updatePreviewFromFields);
 });
 

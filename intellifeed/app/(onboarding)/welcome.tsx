@@ -69,7 +69,7 @@ export default function OnboardingWelcome() {
           showsVerticalScrollIndicator={false}
         >
           <Text style={[TextStyles.kicker, { marginBottom: 8 }]}>
-            Welcome to Sapiens
+            Welcome to Sapience
           </Text>
           <Text style={TextStyles.heroTitle}>Curate Your Cognitive Diet</Text>
           <Text style={[TextStyles.body, { marginTop: 10, marginBottom: Spacing.xl, color: Colors.textSecondary }]}>

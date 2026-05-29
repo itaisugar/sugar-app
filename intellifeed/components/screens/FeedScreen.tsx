@@ -15,13 +15,15 @@ import {
   Alert,
   Linking,
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
+import { detectLinkKind, ctaLabelFor } from '../../lib/externalLinks';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../lib/AuthContext';
 import { useProfile } from '../../lib/ProfileContext';
 import { usePodcastPlayer } from '../../lib/PodcastPlayerContext';
 import { fetchContentItems, FeedItem } from '../../lib/content';
+import { saveItem, unsaveItem, getSavedSubset } from '../../lib/saved';
+import { useLanguage } from '../../lib/LanguageContext';
 
 const CATEGORIES = ['All', 'Science', 'AI', 'Philosophy', 'Performance', 'Geopolitics', 'Business'];
 
@@ -34,6 +36,16 @@ const SOURCE_LABELS: Record<string, string> = {
 function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void; onLike: () => void }) {
   const router = useRouter();
   const player = usePodcastPlayer();
+  const { language, getTranslation, pending } = useLanguage();
+  const translation = getTranslation(item.id);
+  const isHebrew = language === 'he';
+  const isTranslating = isHebrew && !translation && pending.has(item.id);
+  const displayTitle = isHebrew && translation ? translation.title_he : item.title;
+  const displayHook =
+    isHebrew && translation
+      ? (translation.hook_he ?? translation.summary_he)
+      : (item.hook ?? item.summary);
+  const rtlText = isHebrew && translation ? ({ writingDirection: 'rtl' as const, textAlign: 'right' as const }) : undefined;
   const isThisActive = player.isActive(item.id);
   const isThisPlaying = isThisActive && player.isPlaying;
   const isThisLoading = isThisActive && player.isLoading;
@@ -53,7 +65,6 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
   };
 
   const onTogglePlay = async () => {
-    if (!item.audioUrl) return;
     if (isThisPlaying) {
       await player.pause();
     } else if (isThisActive) {
@@ -65,6 +76,8 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
         source: item.source,
         audioUrl: item.audioUrl,
         imageUrl: item.image,
+        // Used as device-TTS fallback when no audioUrl is set on the item
+        ttsText: `${item.title}. ${item.summary}`,
       });
     }
   };
@@ -75,8 +88,7 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
       ? Math.min(1, player.positionMs / player.durationMs)
       : 0;
 
-  const isSpotify =
-    !!item.contentUrl && /(^https?:\/\/(open\.)?spotify\.com\/)|^spotify:/i.test(item.contentUrl);
+  const linkKind = detectLinkKind(item.contentUrl);
 
   const openArticle = () => {
     router.push({ pathname: '/article/[id]', params: { id: item.id } });
@@ -104,16 +116,20 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
           <View style={[styles.categoryPill, { borderColor: item.categoryColor + '60' }]}>
             <Text style={[styles.categoryText, { color: item.categoryColor }]}>{item.category}</Text>
           </View>
-          {item.trendingScore && (
-            <View style={styles.trendingBadge}>
-              <Text style={styles.trendingText}>Signal {item.trendingScore}</Text>
-            </View>
-          )}
           <Text style={styles.timestampText}>{item.timestamp}</Text>
         </View>
 
-        <Text style={[TextStyles.cardTitle, styles.cardTitle]}>{item.title}</Text>
-        <Text style={[TextStyles.bodySecondary, styles.cardSummary]} numberOfLines={4}>{item.summary}</Text>
+        <Text style={[TextStyles.cardTitle, styles.cardTitle, rtlText]}>{displayTitle}</Text>
+        {isTranslating ? (
+          <View style={[styles.cardSummary, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+            <ActivityIndicator size="small" color={Colors.primary} />
+            <Text style={TextStyles.helper}>מתרגם לעברית…</Text>
+          </View>
+        ) : (
+          <Text style={[TextStyles.bodySecondary, styles.cardSummary, rtlText]} numberOfLines={3}>
+            {displayHook}
+          </Text>
+        )}
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsRow}>
           {item.tags.map(tag => (
@@ -132,44 +148,62 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
             <Text style={styles.readTime}>{item.readTime} min read</Text>
           </View>
           {item.contentUrl ? (
-            <View style={[styles.readMorePill, isSpotify && styles.spotifyPill]}>
-              <Text style={[styles.readMoreText, isSpotify && styles.spotifyPillText]}>
-                {isSpotify ? 'Listen on Spotify  ↗' : 'Read article  ↗'}
+            <View style={[
+              styles.readMorePill,
+              linkKind === 'spotify' && styles.spotifyPill,
+              linkKind === 'kindle' && styles.kindlePill,
+            ]}>
+              <Text style={[
+                styles.readMoreText,
+                linkKind === 'spotify' && styles.spotifyPillText,
+                linkKind === 'kindle' && styles.kindlePillText,
+              ]}>
+                {ctaLabelFor(linkKind)}
               </Text>
             </View>
           ) : null}
         </View>
       </Pressable>
 
-      {(item.audioUrl || item.podcastDuration) && (
-        <TouchableOpacity
-          style={[styles.podcastPlayer, isThisActive && styles.podcastPlayerActive]}
-          onPress={onTogglePlay}
-          disabled={!item.audioUrl}
-          activeOpacity={0.85}
-        >
-          <View style={[styles.playButton, !item.audioUrl && { opacity: 0.4 }]}>
-            {isThisLoading ? (
-              <ActivityIndicator size="small" color={Colors.white} />
-            ) : (
-              <Text style={styles.playIcon}>{isThisPlaying ? '❚❚' : '▶'}</Text>
-            )}
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.podcastLabel}>
-              {item.audioUrl ? (isThisActive ? 'Now Playing' : 'Listen — Distilled Audio') : 'Audio coming soon'}
-            </Text>
+      <TouchableOpacity
+        style={[styles.podcastPlayer, isThisActive && styles.podcastPlayerActive]}
+        onPress={onTogglePlay}
+        activeOpacity={0.85}
+      >
+        <View style={styles.playButton}>
+          {isThisLoading ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <Text style={styles.playIcon}>{isThisPlaying ? '❚❚' : '▶'}</Text>
+          )}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.podcastLabel}>
+            {(() => {
+              const hasMP3 = !!item.audioUrl;
+              if (isThisActive && isThisPlaying) return hasMP3 ? 'Now Playing' : 'Narrating';
+              if (isThisActive && !isThisPlaying) return 'Paused';
+              return hasMP3 ? 'Listen — Distilled Audio' : 'Listen to summary';
+            })()}
+          </Text>
+          {item.audioUrl ? (
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${progressFraction * 100}%` }]} />
             </View>
-          </View>
-          <Text style={styles.podcastDuration}>
-            {isThisActive && player.durationMs > 0
-              ? `${formatMs(player.positionMs)} / ${formatMs(player.durationMs)}`
-              : formatDuration(item.podcastDuration)}
-          </Text>
-        </TouchableOpacity>
-      )}
+          ) : (
+            <Text style={styles.podcastSubLabel}>
+              {isThisActive ? 'Tap to stop' : 'AI voice · ~1 min'}
+            </Text>
+          )}
+        </View>
+        <Text style={styles.podcastDuration}>
+          {isThisActive && player.durationMs > 0
+            ? `${formatMs(player.positionMs)} / ${formatMs(player.durationMs)}`
+            : item.podcastDuration
+              ? formatDuration(item.podcastDuration)
+              : ''}
+        </Text>
+      </TouchableOpacity>
 
       <View style={styles.actionsRow}>
         <TouchableOpacity style={styles.actionBtn} onPress={onLike}>
@@ -197,8 +231,10 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
 }
 
 export default function FeedScreen() {
+  const router = useRouter();
   const { user, signOut } = useAuth();
-  const { profile } = useProfile();
+  const { profile, refresh: refreshProfile } = useProfile();
+  const { language, toggle: toggleLanguage, ensureTranslations } = useLanguage();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -210,7 +246,9 @@ export default function FeedScreen() {
     setError(null);
     try {
       const data = await fetchContentItems();
-      setItems(data);
+      // Side-fetch which of these the current user has saved, mark them
+      const savedIds = await getSavedSubset(data.map(d => d.id));
+      setItems(data.map(d => ({ ...d, isSaved: savedIds.has(d.id) })));
     } catch (e: any) {
       setError(e?.message ?? 'Could not load the feed. Please try again.');
     }
@@ -229,6 +267,16 @@ export default function FeedScreen() {
     await loadFeed();
     setRefreshing(false);
   }, [loadFeed]);
+
+  // Translate visible items in bulk when the user switches to Hebrew.
+  useEffect(() => {
+    if (language !== 'he' || items.length === 0) return;
+    ensureTranslations(items.map((i) => i.id));
+  }, [language, items, ensureTranslations]);
+
+  const onToggleLanguage = () => {
+    toggleLanguage();
+  };
 
   const displayName = profile?.full_name ?? user?.email ?? 'I';
   const initial = displayName.charAt(0).toUpperCase();
@@ -268,14 +316,33 @@ export default function FeedScreen() {
     );
   };
 
-  const handleSave = (id: string) => {
+  const handleSave = async (id: string) => {
+    const current = items.find(i => i.id === id);
+    if (!current) return;
+    const wasSaved = current.isSaved;
+    // Optimistic update
     setItems(prev =>
       prev.map(item =>
         item.id === id
-          ? { ...item, isSaved: !item.isSaved, saves: item.isSaved ? item.saves - 1 : item.saves + 1 }
-          : item
-      )
+          ? { ...item, isSaved: !wasSaved, saves: item.saves + (wasSaved ? -1 : 1) }
+          : item,
+      ),
     );
+    try {
+      if (wasSaved) await unsaveItem(id);
+      else await saveItem(id);
+      // Score updated by DB trigger — pull the new value
+      await refreshProfile();
+    } catch {
+      // Roll back optimistic update
+      setItems(prev =>
+        prev.map(item =>
+          item.id === id
+            ? { ...item, isSaved: wasSaved, saves: item.saves + (wasSaved ? 1 : -1) }
+            : item,
+        ),
+      );
+    }
   };
 
   return (
@@ -286,7 +353,7 @@ export default function FeedScreen() {
             {profile?.full_name ? `Welcome, ${profile.full_name.split(' ')[0]}` : 'Knowledge, Distilled'}
           </Text>
           <Text style={[TextStyles.appTitle, { marginTop: 4 }]}>
-            Sapiens<Text style={{ color: Colors.primary }}>.</Text>
+            Sapience<Text style={{ color: Colors.primary }}>.</Text>
           </Text>
         </View>
         <View style={styles.headerRight}>
@@ -301,16 +368,28 @@ export default function FeedScreen() {
 
       <Text style={[TextStyles.tagline, styles.tagline]}>Upgrade Your Cognitive Diet.</Text>
 
-      <View style={styles.searchContainer}>
-        <Text style={styles.searchIcon}>⌕</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search the library…"
-          placeholderTextColor={Colors.textMuted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+      <View style={styles.languageRow}>
+        <TouchableOpacity
+          onPress={onToggleLanguage}
+          style={[styles.languageToggle, language === 'he' && styles.languageToggleActive]}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.languageToggleText, language === 'he' && styles.languageToggleTextActive]}>
+            {language === 'he' ? 'עברית · Tap for English' : 'Translate feed to Hebrew · עברית'}
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        style={styles.searchContainer}
+        onPress={() => router.push('/search')}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.searchIcon}>⌕</Text>
+        <Text style={styles.searchPlaceholder}>
+          Readers, topics, articles…
+        </Text>
+      </TouchableOpacity>
 
       <View style={styles.categoriesWrap}>
         <ScrollView
@@ -460,6 +539,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  searchUsersBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 0.5,
+    borderColor: Colors.surfaceBorderStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchUsersIcon: {
+    fontSize: 18,
+    color: Colors.textPrimary,
+  },
   logoutIcon: {
     fontSize: 16,
     color: Colors.textSecondary,
@@ -468,6 +560,33 @@ const styles = StyleSheet.create({
   tagline: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.base,
+  },
+  languageRow: {
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.base,
+  },
+  languageToggle: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.surfaceBorder,
+    backgroundColor: Colors.surface,
+  },
+  languageToggleActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryGlow,
+  },
+  languageToggleText: {
+    fontSize: 12,
+    fontFamily: Fonts.sansMedium,
+    color: Colors.textSecondary,
+    letterSpacing: 0.4,
+  },
+  languageToggleTextActive: {
+    color: Colors.primary,
+    fontFamily: Fonts.sansSemibold,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -491,6 +610,12 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontFamily: Fonts.sans,
     fontSize: 14,
+  },
+  searchPlaceholder: {
+    flex: 1,
+    fontFamily: Fonts.serifItalic,
+    fontSize: 14,
+    color: Colors.textMuted,
   },
   categoriesWrap: {
     height: 48,
@@ -674,6 +799,13 @@ const styles = StyleSheet.create({
   spotifyPillText: {
     color: '#0F8E3F',
   },
+  kindlePill: {
+    backgroundColor: '#C8782A14',
+    borderColor: '#C8782A50',
+  },
+  kindlePillText: {
+    color: '#A0561B',
+  },
   podcastPlayer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -708,6 +840,11 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginBottom: 6,
     letterSpacing: 0.5,
+  },
+  podcastSubLabel: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 11,
+    color: Colors.textMuted,
   },
   progressBar: {
     height: 2,

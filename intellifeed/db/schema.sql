@@ -32,6 +32,14 @@ alter table public.profiles add column if not exists is_admin boolean default fa
 -- Audio URL for podcast episodes (idempotent ALTER)
 alter table public.content_items add column if not exists audio_url text;
 
+-- Short editorial hook for the feed card (2 sentences, ~60 words)
+alter table public.content_items add column if not exists hook text;
+
+-- Hebrew translations (lazily filled by the translate-item Edge Function)
+alter table public.content_items add column if not exists title_he text;
+alter table public.content_items add column if not exists hook_he text;
+alter table public.content_items add column if not exists summary_he text;
+
 -- 2. ROLE GRANTS ─────────────────────────────────────────────────────────────
 -- RLS alone does not grant table access; explicit grants are required.
 grant usage on schema public to anon, authenticated;
@@ -45,6 +53,13 @@ alter table public.profiles enable row level security;
 drop policy if exists "Users read own profile" on public.profiles;
 create policy "Users read own profile" on public.profiles
   for select using (auth.uid() = id);
+
+-- Discovery: any signed-in user may read other profiles.
+-- The client only requests public columns (full_name, interests, score, …),
+-- never email or date_of_birth.
+drop policy if exists "Profiles are discoverable" on public.profiles;
+create policy "Profiles are discoverable" on public.profiles
+  for select to authenticated using (true);
 
 drop policy if exists "Users insert own profile" on public.profiles;
 create policy "Users insert own profile" on public.profiles
@@ -96,7 +111,64 @@ select id, email from auth.users
 on conflict (id) do nothing;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 6. CONTENT_ITEMS TABLE — the editorial library
+-- 6. FOLLOWS — directed social relationships
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.follows (
+  follower_id uuid not null references public.profiles(id) on delete cascade,
+  followed_id uuid not null references public.profiles(id) on delete cascade,
+  created_at  timestamptz default now(),
+  primary key (follower_id, followed_id),
+  check (follower_id <> followed_id)
+);
+
+create index if not exists follows_followed_idx on public.follows (followed_id);
+create index if not exists follows_follower_idx on public.follows (follower_id);
+
+grant select, insert, delete on public.follows to authenticated;
+grant all privileges on public.follows to service_role;
+
+alter table public.follows enable row level security;
+
+drop policy if exists "Follows are readable by all" on public.follows;
+create policy "Follows are readable by all" on public.follows
+  for select to authenticated using (true);
+
+drop policy if exists "Users follow as themselves" on public.follows;
+create policy "Users follow as themselves" on public.follows
+  for insert to authenticated with check (auth.uid() = follower_id);
+
+drop policy if exists "Users unfollow only their own" on public.follows;
+create policy "Users unfollow only their own" on public.follows
+  for delete to authenticated using (auth.uid() = follower_id);
+
+-- Keep profiles.following and profiles.followers counts in sync.
+create or replace function public.handle_follow_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if (TG_OP = 'INSERT') then
+    update public.profiles set following = following + 1 where id = NEW.follower_id;
+    update public.profiles set followers = followers + 1 where id = NEW.followed_id;
+    return NEW;
+  elsif (TG_OP = 'DELETE') then
+    update public.profiles set following = greatest(0, following - 1) where id = OLD.follower_id;
+    update public.profiles set followers = greatest(0, followers - 1) where id = OLD.followed_id;
+    return OLD;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists follows_count_change on public.follows;
+create trigger follows_count_change
+  after insert or delete on public.follows
+  for each row execute function public.handle_follow_change();
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 7. CONTENT_ITEMS TABLE — the editorial library
 -- ─────────────────────────────────────────────────────────────────────────────
 create table if not exists public.content_items (
   id                uuid primary key default gen_random_uuid(),
@@ -225,6 +297,106 @@ select * from (values
 where not exists (
   select 1 from public.content_items existing where existing.title = v.title
 );
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 8. SAVED_ITEMS — per-user bookmarks. Tied to score gain via trigger.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.saved_items (
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  content_id uuid not null references public.content_items(id) on delete cascade,
+  created_at timestamptz default now(),
+  primary key (user_id, content_id)
+);
+
+create index if not exists saved_items_user_idx on public.saved_items (user_id, created_at desc);
+create index if not exists saved_items_content_idx on public.saved_items (content_id);
+
+grant select, insert, delete on public.saved_items to authenticated;
+grant all privileges on public.saved_items to service_role;
+
+alter table public.saved_items enable row level security;
+
+drop policy if exists "Users read own saved items" on public.saved_items;
+create policy "Users read own saved items" on public.saved_items
+  for select to authenticated using (auth.uid() = user_id);
+
+drop policy if exists "Users save as themselves" on public.saved_items;
+create policy "Users save as themselves" on public.saved_items
+  for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists "Users unsave only their own" on public.saved_items;
+create policy "Users unsave only their own" on public.saved_items
+  for delete to authenticated using (auth.uid() = user_id);
+
+-- Every save bumps the user's total_score and the item's saves_count.
+create or replace function public.handle_save_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if (TG_OP = 'INSERT') then
+    update public.profiles
+      set total_score = total_score + 10
+      where id = NEW.user_id;
+    update public.content_items
+      set saves_count = saves_count + 1
+      where id = NEW.content_id;
+    return NEW;
+  elsif (TG_OP = 'DELETE') then
+    update public.profiles
+      set total_score = greatest(0, total_score - 10)
+      where id = OLD.user_id;
+    update public.content_items
+      set saves_count = greatest(0, saves_count - 1)
+      where id = OLD.content_id;
+    return OLD;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists saved_items_change on public.saved_items;
+create trigger saved_items_change
+  after insert or delete on public.saved_items
+  for each row execute function public.handle_save_change();
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 9. KNOWLEDGE_LEAVES — articles the user has filed onto a specific branch
+-- (interest). Each leaf belongs to exactly one branch; tapping again moves it.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.knowledge_leaves (
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  content_id uuid not null references public.content_items(id) on delete cascade,
+  branch     text not null,
+  created_at timestamptz default now(),
+  primary key (user_id, content_id)
+);
+
+create index if not exists knowledge_leaves_branch_idx
+  on public.knowledge_leaves (user_id, branch, created_at desc);
+
+grant select, insert, update, delete on public.knowledge_leaves to authenticated;
+grant all privileges on public.knowledge_leaves to service_role;
+
+alter table public.knowledge_leaves enable row level security;
+
+drop policy if exists "Users read own leaves" on public.knowledge_leaves;
+create policy "Users read own leaves" on public.knowledge_leaves
+  for select to authenticated using (auth.uid() = user_id);
+
+drop policy if exists "Users add own leaves" on public.knowledge_leaves;
+create policy "Users add own leaves" on public.knowledge_leaves
+  for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists "Users update own leaves" on public.knowledge_leaves;
+create policy "Users update own leaves" on public.knowledge_leaves
+  for update to authenticated using (auth.uid() = user_id);
+
+drop policy if exists "Users delete own leaves" on public.knowledge_leaves;
+create policy "Users delete own leaves" on public.knowledge_leaves
+  for delete to authenticated using (auth.uid() = user_id);
 
 -- ─── BACKFILL content_url for the seeded articles ────────────────────────────
 -- Safe to re-run. Updates each known article with a starting URL.

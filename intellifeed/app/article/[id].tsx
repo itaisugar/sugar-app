@@ -12,43 +12,161 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../constants/Theme';
 import { fetchContentItem } from '../../lib/contentItem';
 import { FeedItem } from '../../lib/content';
+import { detectLinkKind, openExternal } from '../../lib/externalLinks';
+import { isItemSaved, saveItem, unsaveItem } from '../../lib/saved';
+import { addLeaf, removeLeaf, getLeafBranch } from '../../lib/knowledge';
+import { useProfile } from '../../lib/ProfileContext';
+import { usePodcastPlayer } from '../../lib/PodcastPlayerContext';
+import { useLanguage } from '../../lib/LanguageContext';
 
 export default function ArticleReader() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { profile, refresh: refreshProfile } = useProfile();
+  const player = usePodcastPlayer();
+  const { getTranslation, ensureTranslation } = useLanguage();
+  const [hebrew, setHebrew] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
   const [article, setArticle] = useState<FeedItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
+
+  // Audio comes from the global PodcastPlayerContext — same instance the
+  // Feed cards use, so playback continues when navigating between screens
+  // and only one piece can play at a time.
+  const speaking = id ? player.isActive(id) && player.isPlaying : false;
+
+  // Knowledge state
+  const [leafBranch, setLeafBranch] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [leafBusy, setLeafBusy] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const result = await fetchContentItem(id!);
         setArticle(result);
+        if (id) {
+          const [s, b] = await Promise.all([isItemSaved(id), getLeafBranch(id)]);
+          setSaved(s);
+          setLeafBranch(b);
+        }
       } catch (e: any) {
         setError(e?.message ?? 'Could not load this piece.');
       } finally {
         setLoading(false);
       }
     })();
+    // Do NOT stop playback on unmount — the user may want audio to keep
+    // playing as they navigate away (handled by global player).
   }, [id]);
 
-  const isSpotify = !!article?.contentUrl && /spotify\.com/i.test(article.contentUrl);
+  // ── Audio summary ──────────────────────────────────────────────────────
+  const playSummary = async () => {
+    if (!article || !id) return;
+    await player.play({
+      id,
+      title: article.title,
+      source: article.source,
+      audioUrl: article.audioUrl,
+      imageUrl: article.image,
+      ttsText: `${article.title}. ${article.summary}`,
+    });
+  };
+  const stopSummary = async () => {
+    await player.stop();
+  };
+
+  // ── Add to knowledge ──────────────────────────────────────────────────
+  const userInterests = profile?.interests ?? [];
+  const pickBranch = async (branch: string) => {
+    if (!id || leafBusy) return;
+    setLeafBusy(true);
+    const prev = leafBranch;
+    setLeafBranch(branch);
+    setPickerOpen(false);
+    try {
+      await addLeaf(id, branch);
+    } catch {
+      setLeafBranch(prev);
+    } finally {
+      setLeafBusy(false);
+    }
+  };
+  const removeFromKnowledge = async () => {
+    if (!id || leafBusy) return;
+    setLeafBusy(true);
+    const prev = leafBranch;
+    setLeafBranch(null);
+    try {
+      await removeLeaf(id);
+    } catch {
+      setLeafBranch(prev);
+    } finally {
+      setLeafBusy(false);
+    }
+  };
+
+  const toggleSave = async () => {
+    if (!id || saveBusy) return;
+    const prev = saved;
+    setSaved(!prev);
+    setSaveBusy(true);
+    try {
+      if (prev) await unsaveItem(id);
+      else await saveItem(id);
+      await refreshProfile();
+    } catch {
+      setSaved(prev);
+    } finally {
+      setSaveBusy(false);
+    }
+  };
+
+  const translation = id ? getTranslation(id) : undefined;
+  const showHebrew = hebrew && !!translation;
+  const displayTitle = showHebrew ? translation!.title_he : article?.title ?? '';
+  const displayHook =
+    showHebrew ? (translation!.hook_he ?? null) : (article?.hook ?? null);
+  const displayBody = showHebrew ? translation!.summary_he : article?.summary ?? '';
+  const rtl = showHebrew ? { writingDirection: 'rtl' as const, textAlign: 'right' as const } : undefined;
+
+  const onToggleHebrew = async () => {
+    if (!id) return;
+    if (hebrew) {
+      setHebrew(false);
+      return;
+    }
+    if (translation) {
+      setHebrew(true);
+      return;
+    }
+    setTranslating(true);
+    setTranslateError(null);
+    try {
+      await ensureTranslation(id);
+      setHebrew(true);
+    } catch (e: any) {
+      setTranslateError(e?.message ?? 'Translation failed.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const linkKind = detectLinkKind(article?.contentUrl);
+  const isSpotify = linkKind === 'spotify';
+  const isKindle = linkKind === 'kindle';
 
   const openOriginal = useCallback(async () => {
     if (!article?.contentUrl) return;
-    try {
-      if (isSpotify) await Linking.openURL(article.contentUrl);
-      else await WebBrowser.openBrowserAsync(article.contentUrl);
-    } catch {
-      Alert.alert('Could not open the source.');
-    }
-  }, [article?.contentUrl, isSpotify]);
+    await openExternal(article.contentUrl, linkKind);
+  }, [article?.contentUrl, linkKind]);
 
   if (loading) {
     return (
@@ -85,7 +203,7 @@ export default function ArticleReader() {
         </TouchableOpacity>
         <Text style={TextStyles.overline}>Reader</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={() => setSaved(s => !s)} style={[styles.iconBtn, saved && styles.iconBtnActive]}>
+          <TouchableOpacity onPress={toggleSave} disabled={saveBusy} style={[styles.iconBtn, saved && styles.iconBtnActive]}>
             <Text style={[styles.iconBtnText, saved && { color: Colors.surface }]}>★</Text>
           </TouchableOpacity>
         </View>
@@ -103,19 +221,34 @@ export default function ArticleReader() {
         {/* Kicker */}
         <View style={styles.kickerRow}>
           <Text style={TextStyles.kicker}>{article.category} · {article.source}</Text>
-          {article.trendingScore ? (
-            <>
-              <View style={styles.dot} />
-              <Text style={TextStyles.overline}>Signal {article.trendingScore}</Text>
-            </>
-          ) : null}
         </View>
 
+        {/* Hebrew translation toggle */}
+        <TouchableOpacity
+          onPress={onToggleHebrew}
+          disabled={translating}
+          style={[styles.translateBtn, showHebrew && styles.translateBtnActive]}
+          activeOpacity={0.85}
+        >
+          {translating ? (
+            <ActivityIndicator size="small" color={Colors.primary} />
+          ) : (
+            <Text style={[styles.translateBtnText, showHebrew && styles.translateBtnTextActive]}>
+              {showHebrew ? 'Show in English' : 'תרגם לעברית · Translate to Hebrew'}
+            </Text>
+          )}
+        </TouchableOpacity>
+        {translateError ? (
+          <Text style={[TextStyles.error, { marginBottom: 8 }]}>{translateError}</Text>
+        ) : null}
+
         {/* Title */}
-        <Text style={styles.title}>{article.title}</Text>
+        <Text style={[styles.title, rtl]}>{displayTitle}</Text>
 
         {/* Dek (summary in italic) */}
-        <Text style={styles.dek}>{article.summary}</Text>
+        {displayHook ? (
+          <Text style={[styles.dek, rtl]}>{displayHook}</Text>
+        ) : null}
 
         {/* Byline */}
         <View style={styles.byline}>
@@ -136,7 +269,25 @@ export default function ArticleReader() {
           <Image source={{ uri: article.image }} style={styles.heroImage} resizeMode="cover" />
         ) : null}
 
-        {/* Audio / Spotify card */}
+        {/* Audio summary — narrated via device TTS */}
+        <TouchableOpacity
+          style={[styles.audioCard, speaking && styles.audioCardActive]}
+          onPress={speaking ? stopSummary : playSummary}
+          activeOpacity={0.88}
+        >
+          <View style={[styles.audioPlay, { backgroundColor: Colors.primary }]}>
+            <Text style={styles.audioPlayIcon}>{speaking ? '❚❚' : '▶'}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.audioLabel}>{speaking ? 'Narrating' : 'Listen to summary'}</Text>
+            <Text style={styles.audioTitle}>
+              {speaking ? 'Tap to stop' : 'AI voice · ~1 min'}
+            </Text>
+          </View>
+          <Text style={styles.audioArrow}>{speaking ? '◼' : '◐'}</Text>
+        </TouchableOpacity>
+
+        {/* External app card — Spotify or Kindle */}
         {isSpotify ? (
           <TouchableOpacity style={styles.audioCard} onPress={openOriginal} activeOpacity={0.88}>
             <View style={[styles.audioPlay, { backgroundColor: '#1DB954' }]}>
@@ -149,24 +300,123 @@ export default function ArticleReader() {
             <Text style={styles.audioArrow}>↗</Text>
           </TouchableOpacity>
         ) : null}
+        {isKindle ? (
+          <TouchableOpacity style={styles.audioCard} onPress={openOriginal} activeOpacity={0.88}>
+            <View style={[styles.audioPlay, { backgroundColor: '#C8782A' }]}>
+              <Text style={styles.audioPlayIcon}>❡</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.audioLabel}>Open in Kindle</Text>
+              <Text style={styles.audioTitle}>{article.readTime} min · book</Text>
+            </View>
+            <Text style={styles.audioArrow}>↗</Text>
+          </TouchableOpacity>
+        ) : null}
 
-        {/* Body — drop cap on first paragraph, then read more */}
+        {/* Body — drop cap on first paragraph, paragraph breaks on the rest */}
         <View style={styles.bodyBlock}>
-          <Text style={styles.bodyParagraph}>
-            <Text style={styles.dropCap}>{article.summary.charAt(0)}</Text>
-            {article.summary.slice(1)}
-          </Text>
+          {(() => {
+            const paragraphs = displayBody
+              .split(/\n{2,}/)
+              .map((p) => p.trim())
+              .filter(Boolean);
+            if (paragraphs.length === 0) return null;
+            return paragraphs.map((p, idx) => {
+              if (idx === 0 && !showHebrew) {
+                return (
+                  <Text key={idx} style={styles.bodyParagraph}>
+                    <Text style={styles.dropCap}>{p.charAt(0)}</Text>
+                    {p.slice(1)}
+                  </Text>
+                );
+              }
+              return (
+                <Text
+                  key={idx}
+                  style={[styles.bodyParagraph, rtl, idx > 0 && { marginTop: 16 }]}
+                >
+                  {p}
+                </Text>
+              );
+            });
+          })()}
         </View>
 
         {/* Continue reading CTA */}
         {article.contentUrl ? (
           <TouchableOpacity style={styles.continueBtn} onPress={openOriginal} activeOpacity={0.85}>
             <Text style={styles.continueText}>
-              {isSpotify ? `Listen full episode on Spotify` : `Continue reading on ${article.source}`}
+              {isSpotify
+                ? `Listen full episode on Spotify`
+                : isKindle
+                  ? `Read full book in Kindle`
+                  : `Continue reading on ${article.source}`}
             </Text>
             <Text style={styles.continueArrow}>↗</Text>
           </TouchableOpacity>
         ) : null}
+
+        {/* Add to knowledge */}
+        <View style={styles.knowledgeBlock}>
+          <Text style={[TextStyles.overline, { marginBottom: 10 }]}>Knowledge tree</Text>
+          {leafBranch ? (
+            <View style={styles.leafCard}>
+              <Text style={styles.leafText}>
+                Filed under <Text style={{ fontFamily: Fonts.serifItalicMedium, color: Colors.primary }}>{leafBranch}</Text>
+              </Text>
+              <View style={styles.leafActions}>
+                <TouchableOpacity onPress={() => setPickerOpen(o => !o)} style={styles.leafBtn}>
+                  <Text style={styles.leafBtnText}>Move</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={removeFromKnowledge} style={styles.leafBtnGhost}>
+                  <Text style={styles.leafBtnGhostText}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.addToKnowledgeBtn}
+              onPress={() => setPickerOpen(o => !o)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.addToKnowledgeText}>＋ Add to knowledge</Text>
+            </TouchableOpacity>
+          )}
+
+          {pickerOpen ? (
+            <View style={styles.branchPicker}>
+              <Text style={[TextStyles.tagline, { marginBottom: 10 }]}>
+                Choose a branch to graft this onto.
+              </Text>
+              {userInterests.length === 0 ? (
+                <Text style={TextStyles.helper}>
+                  You haven't picked any interests yet. Edit your profile to add some.
+                </Text>
+              ) : (
+                <View style={styles.branchChips}>
+                  {userInterests.map(b => (
+                    <TouchableOpacity
+                      key={b}
+                      onPress={() => pickBranch(b)}
+                      disabled={leafBusy}
+                      style={[
+                        styles.branchChip,
+                        b === leafBranch && styles.branchChipActive,
+                      ]}
+                    >
+                      <Text style={[
+                        styles.branchChipText,
+                        b === leafBranch && styles.branchChipTextActive,
+                      ]}>
+                        {b}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : null}
+        </View>
 
         {/* Tags */}
         {article.tags.length > 0 ? (
@@ -189,7 +439,7 @@ export default function ArticleReader() {
       {/* Floating action bar */}
       <View style={styles.actionBarWrap}>
         <View style={styles.actionBar}>
-          <ActionChip label={saved ? 'Saved' : 'Save'} onPress={() => setSaved(s => !s)} active={saved} />
+          <ActionChip label={saved ? 'Saved' : 'Save'} onPress={toggleSave} active={saved} />
           <ActionChip label="Plan it" primary />
           <ActionChip label="Share" />
           <ActionChip label="Note" />
@@ -249,6 +499,30 @@ const styles = StyleSheet.create({
   },
   dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: Colors.textFaint },
 
+  translateBtn: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 0.5,
+    borderColor: Colors.surfaceBorderStrong,
+    backgroundColor: Colors.surfaceMuted,
+    marginBottom: 14,
+  },
+  translateBtnActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryGlow,
+  },
+  translateBtnText: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 11,
+    color: Colors.textSecondary,
+    letterSpacing: 0.4,
+  },
+  translateBtnTextActive: {
+    color: Colors.primary,
+    fontFamily: Fonts.sansSemibold,
+  },
   title: {
     fontFamily: Fonts.serif,
     fontSize: 34,
@@ -305,6 +579,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     backgroundColor: Colors.textPrimary,
   },
+  audioCardActive: {
+    backgroundColor: Colors.primaryDark,
+  },
   audioPlay: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: Colors.primary,
@@ -341,6 +618,90 @@ const styles = StyleSheet.create({
   continueText: { fontFamily: Fonts.sansSemibold, fontSize: 13, color: Colors.primary, letterSpacing: 0.3 },
   continueArrow: { color: Colors.primary, fontSize: 18 },
 
+  knowledgeBlock: { marginTop: Spacing.xl },
+  addToKnowledgeBtn: {
+    paddingVertical: 14,
+    borderRadius: Radius.md,
+    borderWidth: 0.5,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryGlow,
+    alignItems: 'center',
+  },
+  addToKnowledgeText: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 13,
+    color: Colors.primary,
+    letterSpacing: 0.4,
+  },
+  leafCard: {
+    padding: Spacing.base,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.primaryGlow,
+    borderWidth: 0.5,
+    borderColor: Colors.primary,
+  },
+  leafText: {
+    fontFamily: Fonts.serif,
+    fontSize: 15,
+    color: Colors.textPrimary,
+  },
+  leafActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  leafBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: Colors.primary,
+  },
+  leafBtnText: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 11,
+    color: Colors.surface,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  leafBtnGhost: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 0.5,
+    borderColor: Colors.surfaceBorderStrong,
+  },
+  leafBtnGhostText: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 11,
+    color: Colors.textMuted,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  branchPicker: {
+    marginTop: Spacing.base,
+    padding: Spacing.base,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 0.5,
+    borderColor: Colors.surfaceBorder,
+  },
+  branchChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  branchChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 0.5,
+    borderColor: Colors.surfaceBorderStrong,
+    backgroundColor: Colors.transparent,
+  },
+  branchChipActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryGlow,
+  },
+  branchChipText: {
+    fontFamily: Fonts.serifRegular,
+    fontSize: 13,
+    color: Colors.textPrimary,
+  },
+  branchChipTextActive: {
+    color: Colors.primary,
+  },
   tagsBlock: { marginTop: Spacing.xl },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tag: {

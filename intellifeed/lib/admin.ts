@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 
 export type AISummary = {
   title: string;
+  hook: string;
   summary: string;
   source: string;
   category: string;
@@ -9,6 +10,7 @@ export type AISummary = {
   read_time: number;
   image_url: string;
   content_url: string;
+  audio_url: string | null;
   tags: string[];
 };
 
@@ -27,6 +29,7 @@ export async function summarizeUrl(url: string): Promise<AISummary> {
 
 export type NewContentItem = {
   title: string;
+  hook?: string | null;
   summary: string;
   source: string;
   source_avatar?: string;
@@ -46,6 +49,7 @@ export async function createContentItem(item: NewContentItem) {
     .from('content_items')
     .insert({
       title: item.title,
+      hook: item.hook ?? null,
       summary: item.summary,
       source: item.source,
       source_avatar: item.source_avatar ?? '◆',

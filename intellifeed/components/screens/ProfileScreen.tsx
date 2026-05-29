@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Image } from 'react-native';
 import {
   View,
   Text,
@@ -12,6 +13,8 @@ import { useRouter } from 'expo-router';
 import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
 import { useAuth } from '../../lib/AuthContext';
 import { useProfile } from '../../lib/ProfileContext';
+import { fetchSavedItems } from '../../lib/saved';
+import { FeedItem } from '../../lib/content';
 
 function deriveTier(score: number): string {
   if (score >= 5000) return 'Grand Master';
@@ -26,8 +29,23 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { profile: dbProfile, loading: profileLoading, error: profileError, refresh } = useProfile();
-  const [activeSection, setActiveSection] = useState<'stats' | 'knowledge' | 'badges'>('stats');
+  const [activeSection, setActiveSection] = useState<'stats' | 'knowledge' | 'saved'>('stats');
   const [signingOut, setSigningOut] = useState(false);
+  const [savedItems, setSavedItems] = useState<FeedItem[]>([]);
+  const [savedLoading, setSavedLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeSection !== 'saved') return;
+    (async () => {
+      setSavedLoading(true);
+      try {
+        const items = await fetchSavedItems();
+        setSavedItems(items);
+      } catch {} finally {
+        setSavedLoading(false);
+      }
+    })();
+  }, [activeSection]);
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -197,7 +215,7 @@ export default function ProfileScreen() {
           {[
             { key: 'stats', label: 'Statistics' },
             { key: 'knowledge', label: 'Knowledge' },
-            { key: 'badges', label: 'Distinctions' },
+            { key: 'saved', label: `Saved${savedItems.length ? ` · ${savedItems.length}` : ''}` },
           ].map(tab => (
             <TouchableOpacity
               key={tab.key}
@@ -264,19 +282,51 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {activeSection === 'badges' && (
+        {activeSection === 'saved' && (
           <View style={styles.section}>
-            <Text style={TextStyles.sectionTitle}>Distinctions Earned</Text>
+            <Text style={TextStyles.sectionTitle}>Your library</Text>
             <Text style={[TextStyles.tagline, { marginTop: 4 }]}>
-              Markers of consistent intellectual practice.
+              Everything you've marked with a star. Each save adds ten points to your score.
             </Text>
-            <View style={styles.sectionEmpty}>
-              <Text style={TextStyles.emptyTitle}>No distinctions yet</Text>
-              <Text style={[TextStyles.emptyDescription, { textAlign: 'center' }]}>
-                Sustained practice unlocks recognitions for depth of reading, breadth of interests,
-                and consistency. Yours will appear here as you progress.
-              </Text>
-            </View>
+
+            {savedLoading && savedItems.length === 0 ? (
+              <View style={[styles.sectionEmpty, { borderStyle: 'solid' }]}>
+                <ActivityIndicator color={Colors.primary} />
+              </View>
+            ) : savedItems.length === 0 ? (
+              <View style={styles.sectionEmpty}>
+                <Text style={TextStyles.emptyTitle}>Nothing saved yet</Text>
+                <Text style={[TextStyles.emptyDescription, { textAlign: 'center' }]}>
+                  Tap the star on any piece in the feed to file it here.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.savedList}>
+                {savedItems.map(item => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.savedRow}
+                    onPress={() => router.push({ pathname: '/article/[id]', params: { id: item.id } })}
+                    activeOpacity={0.85}
+                  >
+                    {item.image ? (
+                      <Image source={{ uri: item.image }} style={styles.savedThumb} />
+                    ) : (
+                      <View style={[styles.savedThumb, { backgroundColor: Colors.surfaceMuted }]} />
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={[TextStyles.kicker, { color: item.categoryColor, fontSize: 9 }]}>
+                        {item.category}
+                      </Text>
+                      <Text style={styles.savedTitle} numberOfLines={2}>{item.title}</Text>
+                      <Text style={TextStyles.meta}>
+                        {item.source} · {item.readTime} min
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -313,7 +363,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Sapiens · Upgrade Your Cognitive Diet</Text>
+          <Text style={styles.footerText}>Sapience · Upgrade Your Cognitive Diet</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -401,6 +451,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.primary,
     backgroundColor: Colors.primaryGlow,
+  },
+  savedList: {
+    marginTop: 16,
+  },
+  savedRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 14,
+    borderTopWidth: 0.5,
+    borderColor: Colors.surfaceBorder,
+  },
+  savedThumb: {
+    width: 78,
+    height: 78,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceMuted,
+  },
+  savedTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 16,
+    lineHeight: 21,
+    color: Colors.textPrimary,
+    letterSpacing: -0.2,
+    marginVertical: 4,
   },
   sectionEmptyTitle: {
     fontSize: 16,
