@@ -129,7 +129,6 @@ export default function ProfileScreen() {
       >
         {/* Hero */}
         <View style={styles.hero}>
-          <Text style={TextStyles.kicker}>Your Knowledge Tree</Text>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>
               {(displayName ?? displayEmail ?? 'I').charAt(0).toUpperCase()}

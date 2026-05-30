@@ -379,7 +379,10 @@ export default function FeedScreen() {
             style={[styles.langIcon, language === 'he' && styles.langIconActive]}
             activeOpacity={0.7}
           >
-            <Text style={[styles.langIconText, language === 'he' && styles.langIconTextActive]}>א</Text>
+            <Text style={[styles.langGlyph, language === 'he' && styles.langIconTextActive]}>⇄</Text>
+            <Text style={[styles.langCode, language === 'he' && styles.langIconTextActive]}>
+              {language === 'he' ? 'He' : 'En'}
+            </Text>
           </TouchableOpacity>
         </View>
         <View style={styles.headerRight}>
@@ -560,20 +563,28 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
   },
   langIcon: {
-    width: 28, height: 28, borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9, paddingVertical: 5,
+    borderRadius: 999,
     borderWidth: 0.5, borderColor: Colors.surfaceBorderStrong,
     backgroundColor: Colors.surface,
-    alignItems: 'center', justifyContent: 'center',
   },
   langIconActive: {
     borderColor: Colors.primary,
     backgroundColor: Colors.primaryGlow,
   },
-  langIconText: {
-    fontFamily: Fonts.serif,
-    fontSize: 15,
+  langGlyph: {
+    fontSize: 12,
     color: Colors.textSecondary,
-    lineHeight: 18,
+    lineHeight: 14,
+  },
+  langCode: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    color: Colors.textSecondary,
   },
   langIconTextActive: { color: Colors.primary },
   headerKicker: {

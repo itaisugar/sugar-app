@@ -52,8 +52,8 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   tabItem: {
-    borderRightWidth: 0.5,
-    borderRightColor: Colors.surfaceBorder,
+    borderRightWidth: 1,
+    borderRightColor: Colors.surfaceBorderStrong,
   },
   tabBtn: {
     alignItems: 'center',

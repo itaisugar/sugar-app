@@ -22,6 +22,7 @@ import { addLeaf, removeLeaf, getLeafBranch } from '../../lib/knowledge';
 import { useProfile } from '../../lib/ProfileContext';
 import { usePodcastPlayer } from '../../lib/PodcastPlayerContext';
 import { useLanguage } from '../../lib/LanguageContext';
+import { getCategoryStyle } from '../../constants/Categories';
 
 export default function ArticleReader() {
   const router = useRouter();
@@ -240,7 +241,7 @@ export default function ArticleReader() {
       >
         {/* Kicker */}
         <View style={styles.kickerRow}>
-          <Text style={TextStyles.kicker}>{article.category} · {article.source}</Text>
+          <Text style={TextStyles.kicker}>{article.source}</Text>
         </View>
 
         {/* Hebrew translation toggle */}
@@ -361,6 +362,20 @@ export default function ArticleReader() {
             });
           })()}
         </View>
+
+        {/* Filed under (category badge) — placed after the body */}
+        {(() => {
+          const s = getCategoryStyle(article.category);
+          return (
+            <View style={[styles.filedUnder, { borderColor: s.color + '40', backgroundColor: s.background }]}>
+              <Text style={[styles.filedGlyph, { color: s.color }]}>{s.glyph}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.filedKicker}>Filed Under</Text>
+                <Text style={[styles.filedLabel, { color: s.color }]}>{article.category}</Text>
+              </View>
+            </View>
+          );
+        })()}
 
         {/* Continue reading CTA */}
         {article.contentUrl ? (
@@ -642,6 +657,33 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
 
+  filedUnder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginTop: Spacing.lg,
+    padding: Spacing.base,
+    borderRadius: Radius.md,
+    borderWidth: 0.5,
+  },
+  filedGlyph: {
+    fontFamily: Fonts.serif,
+    fontSize: 30,
+    lineHeight: 32,
+  },
+  filedKicker: {
+    fontSize: 9,
+    fontFamily: Fonts.sansMedium,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+    marginBottom: 2,
+  },
+  filedLabel: {
+    fontFamily: Fonts.serif,
+    fontSize: 18,
+    letterSpacing: -0.2,
+  },
   continueBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginTop: Spacing.lg,
