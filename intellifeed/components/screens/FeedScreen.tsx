@@ -374,6 +374,11 @@ export default function FeedScreen() {
           <Text style={[TextStyles.appTitle, { fontSize: 26 }]}>
             Sapience<Text style={{ color: Colors.primary }}>.</Text>
           </Text>
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakText}>✱ {profile?.day_streak ?? 0}d</Text>
+          </View>
+        </View>
+        <View style={styles.headerRight}>
           <TouchableOpacity
             onPress={onToggleLanguage}
             style={[styles.langIcon, language === 'he' && styles.langIconActive]}
@@ -384,11 +389,6 @@ export default function FeedScreen() {
               {language === 'he' ? 'He' : 'En'}
             </Text>
           </TouchableOpacity>
-        </View>
-        <View style={styles.headerRight}>
-          <View style={styles.streakBadge}>
-            <Text style={styles.streakText}>✱ {profile?.day_streak ?? 0}d</Text>
-          </View>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
