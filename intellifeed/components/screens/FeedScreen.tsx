@@ -370,15 +370,13 @@ export default function FeedScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text style={[TextStyles.appTitle, { fontSize: 26 }]}>
-            Sapience<Text style={{ color: Colors.primary }}>.</Text>
-          </Text>
-          <View style={styles.streakBadge}>
-            <Text style={styles.streakText}>✱ {profile?.day_streak ?? 0}d</Text>
-          </View>
-        </View>
+        <Text style={[TextStyles.appTitle, { fontSize: 26 }]}>
+          Sapience<Text style={{ color: Colors.primary }}>.</Text>
+        </Text>
         <View style={styles.headerRight}>
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakText}>✱ {profile?.day_streak ?? 0} days streak</Text>
+          </View>
           <TouchableOpacity
             onPress={onToggleLanguage}
             style={[styles.langIcon, language === 'he' && styles.langIconActive]}
