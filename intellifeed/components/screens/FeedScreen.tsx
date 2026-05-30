@@ -25,6 +25,7 @@ import { fetchContentItems, FeedItem } from '../../lib/content';
 import { saveItem, unsaveItem, getSavedSubset } from '../../lib/saved';
 import { useLanguage } from '../../lib/LanguageContext';
 import { fetchJoinedClubsActivity, ClubActivity } from '../../lib/clubs';
+import { fetchFollowedActivity, activityVerb, FollowActivity } from '../../lib/social';
 import { touchDayStreak } from '../../lib/streak';
 import { getDailyQuote } from '../../lib/quotes';
 import { CLUBS } from '../../constants/MockData';
@@ -253,18 +254,21 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clubActivity, setClubActivity] = useState<ClubActivity[]>([]);
+  const [followActivity, setFollowActivity] = useState<FollowActivity[]>([]);
   const quote = getDailyQuote();
 
   const loadFeed = useCallback(async () => {
     setError(null);
     try {
-      const [data, activity] = await Promise.all([
+      const [data, activity, social] = await Promise.all([
         fetchContentItems(),
         fetchJoinedClubsActivity(),
+        fetchFollowedActivity(),
       ]);
       const savedIds = await getSavedSubset(data.map(d => d.id));
       setItems(data.map(d => ({ ...d, isSaved: savedIds.has(d.id) })));
       setClubActivity(activity);
+      setFollowActivity(social);
     } catch (e: any) {
       setError(e?.message ?? 'Could not load the feed. Please try again.');
     }
@@ -455,6 +459,36 @@ export default function FeedScreen() {
                 <Text style={styles.quoteText}>"{quote.text}"</Text>
                 <Text style={styles.quoteAuthor}>— {quote.author}{quote.source ? `, ${quote.source}` : ''}</Text>
               </View>
+
+              {/* Following activity */}
+              {followActivity.length > 0 ? (
+                <View style={styles.clubActivityCard}>
+                  <Text style={styles.quoteOverline}>From People You Follow</Text>
+                  {followActivity.slice(0, 5).map(a => {
+                    const initials = (a.author_name ?? '·').trim().charAt(0).toUpperCase();
+                    return (
+                      <Pressable
+                        key={a.id}
+                        onPress={() => router.push({ pathname: '/article/[id]', params: { id: a.content_id } })}
+                        style={({ pressed }) => [styles.followRow, pressed && { opacity: 0.6 }]}
+                      >
+                        <View style={styles.followAvatar}>
+                          <Text style={styles.followAvatarText}>{initials}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.followLine} numberOfLines={1}>
+                            <Text style={{ fontFamily: Fonts.sansSemibold, color: Colors.textPrimary }}>
+                              {a.author_name ?? 'A reader'}
+                            </Text>
+                            <Text style={{ color: Colors.textMuted }}>  {activityVerb(a)}</Text>
+                          </Text>
+                          <Text style={styles.followTitle} numberOfLines={2}>{a.content_title}</Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
 
               {/* Club activity */}
               {clubActivity.length > 0 ? (
@@ -760,6 +794,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     color: Colors.textSecondary,
+  },
+  followRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    borderTopWidth: 0.5,
+    borderColor: Colors.surfaceBorder,
+  },
+  followAvatar: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: Colors.primaryGlow,
+    borderWidth: 0.5, borderColor: Colors.primary + '40',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  followAvatarText: {
+    fontFamily: Fonts.serif, fontSize: 13,
+    color: Colors.primary,
+  },
+  followLine: {
+    fontFamily: Fonts.sans, fontSize: 12,
+    lineHeight: 16,
+  },
+  followTitle: {
+    marginTop: 3,
+    fontFamily: Fonts.serif,
+    fontSize: 13,
+    lineHeight: 18,
+    color: Colors.textPrimary,
   },
 
   // Card
