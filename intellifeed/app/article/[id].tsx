@@ -17,6 +17,7 @@ import { fetchContentItem } from '../../lib/contentItem';
 import { FeedItem } from '../../lib/content';
 import { detectLinkKind, openExternal } from '../../lib/externalLinks';
 import { isItemSaved, saveItem, unsaveItem } from '../../lib/saved';
+import { isItemRead, markAsRead, unmarkAsRead } from '../../lib/reads';
 import { addLeaf, removeLeaf, getLeafBranch } from '../../lib/knowledge';
 import { useProfile } from '../../lib/ProfileContext';
 import { usePodcastPlayer } from '../../lib/PodcastPlayerContext';
@@ -36,6 +37,8 @@ export default function ArticleReader() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
+  const [read, setRead] = useState(false);
+  const [readBusy, setReadBusy] = useState(false);
 
   // Audio comes from the global PodcastPlayerContext — same instance the
   // Feed cards use, so playback continues when navigating between screens
@@ -53,9 +56,10 @@ export default function ArticleReader() {
         const result = await fetchContentItem(id!);
         setArticle(result);
         if (id) {
-          const [s, b] = await Promise.all([isItemSaved(id), getLeafBranch(id)]);
+          const [s, b, r] = await Promise.all([isItemSaved(id), getLeafBranch(id), isItemRead(id)]);
           setSaved(s);
           setLeafBranch(b);
+          setRead(r);
         }
       } catch (e: any) {
         setError(e?.message ?? 'Could not load this piece.');
@@ -110,6 +114,22 @@ export default function ArticleReader() {
       setLeafBranch(prev);
     } finally {
       setLeafBusy(false);
+    }
+  };
+
+  const toggleRead = async () => {
+    if (!id || readBusy) return;
+    const prev = read;
+    setRead(!prev);
+    setReadBusy(true);
+    try {
+      if (prev) await unmarkAsRead(id);
+      else await markAsRead(id);
+      await refreshProfile();
+    } catch {
+      setRead(prev);
+    } finally {
+      setReadBusy(false);
     }
   };
 
@@ -418,6 +438,22 @@ export default function ArticleReader() {
           ) : null}
         </View>
 
+        {/* Mark as read */}
+        <TouchableOpacity
+          onPress={toggleRead}
+          disabled={readBusy}
+          activeOpacity={0.85}
+          style={[styles.readBtn, read && styles.readBtnDone]}
+        >
+          {readBusy ? (
+            <ActivityIndicator size="small" color={read ? Colors.surface : Colors.primary} />
+          ) : (
+            <Text style={[styles.readBtnText, read && styles.readBtnTextDone]}>
+              {read ? '✓ Marked as read' : '＋ I read this article'}
+            </Text>
+          )}
+        </TouchableOpacity>
+
         {/* Tags */}
         {article.tags.length > 0 ? (
           <View style={styles.tagsBlock}>
@@ -701,6 +737,28 @@ const styles = StyleSheet.create({
   },
   branchChipTextActive: {
     color: Colors.primary,
+  },
+  readBtn: {
+    marginTop: Spacing.xl,
+    paddingVertical: 14,
+    borderRadius: Radius.md,
+    borderWidth: 0.5,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryGlow,
+    alignItems: 'center',
+  },
+  readBtnDone: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  readBtnText: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 13,
+    color: Colors.primary,
+    letterSpacing: 0.4,
+  },
+  readBtnTextDone: {
+    color: Colors.surface,
   },
   tagsBlock: { marginTop: Spacing.xl },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },

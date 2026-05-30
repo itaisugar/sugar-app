@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,11 @@ import {
   Image,
   FlatList,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
 import { CLUBS, Club } from '../../constants/MockData';
+import { useProfile } from '../../lib/ProfileContext';
+import { fetchJoinedClubIds, joinClub } from '../../lib/clubs';
 
 const LEVEL_LABELS: Record<string, string> = {
   beginner: 'Entry',
@@ -20,11 +22,9 @@ const LEVEL_LABELS: Record<string, string> = {
   expert: 'Expert',
 };
 
-const USER_SCORE = 2847;
-
-function ClubCard({ club, onJoin }: { club: Club; onJoin: () => void }) {
+function ClubCard({ club, score, onJoin }: { club: Club; score: number; onJoin: () => void }) {
   const router = useRouter();
-  const canJoin = USER_SCORE >= club.requiredScore;
+  const canJoin = score >= club.requiredScore;
   const openClub = () => router.push({ pathname: '/club/[id]', params: { id: club.id } });
 
   return (
@@ -106,20 +106,40 @@ function ClubCard({ club, onJoin }: { club: Club; onJoin: () => void }) {
 }
 
 export default function ClubsScreen() {
-  const [clubs, setClubs] = useState(CLUBS);
+  const { profile } = useProfile();
+  const score = profile?.total_score ?? 0;
+  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState<'all' | 'joined' | 'available'>('all');
+
+  const refreshMembership = useCallback(async () => {
+    const ids = await fetchJoinedClubIds();
+    setJoinedIds(ids);
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    refreshMembership();
+  }, [refreshMembership]));
+
+  const clubs: Club[] = CLUBS.map(c => ({
+    ...c,
+    isJoined: joinedIds.has(c.id),
+    members: c.members + (joinedIds.has(c.id) && !c.isJoined ? 1 : 0),
+  }));
 
   const filtered = clubs.filter(c => {
     if (activeFilter === 'joined') return c.isJoined;
-    if (activeFilter === 'available') return !c.isJoined && USER_SCORE >= c.requiredScore;
+    if (activeFilter === 'available') return !c.isJoined && score >= c.requiredScore;
     return true;
   });
 
-  const handleJoin = (id: string) => {
-    setClubs(prev => prev.map(c => c.id === id ? { ...c, isJoined: true, members: c.members + 1 } : c));
+  const handleJoin = async (id: string) => {
+    try {
+      await joinClub(id);
+      setJoinedIds(prev => new Set(prev).add(id));
+    } catch (e) {
+      // swallow — UI will be unchanged
+    }
   };
-
-  const myClubs = clubs.filter(c => c.isJoined);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -133,31 +153,9 @@ export default function ClubsScreen() {
         </View>
         <View style={styles.scoreBadge}>
           <Text style={styles.scoreLabel}>SCORE</Text>
-          <Text style={styles.scoreText}>{USER_SCORE.toLocaleString()}</Text>
+          <Text style={styles.scoreText}>{score.toLocaleString()}</Text>
         </View>
       </View>
-
-      {myClubs.length > 0 && (
-        <View style={styles.myClubsCard}>
-          <Text style={styles.myClubsTitle}>YOUR CIRCLES — {myClubs.length}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              {myClubs.map(club => (
-                <View key={club.id} style={styles.myClubChip}>
-                  <Text style={styles.myClubName} numberOfLines={2}>{club.name}</Text>
-                  <View style={styles.activityBar}>
-                    <View style={[
-                      styles.activityFill,
-                      { width: `${club.weeklyActivity}%` }
-                    ]} />
-                  </View>
-                  <Text style={styles.activityLabel}>{club.weeklyActivity}% active</Text>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-      )}
 
       <View style={styles.filterRow}>
         {[
@@ -183,7 +181,7 @@ export default function ClubsScreen() {
         contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 120, gap: 20 }}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <ClubCard club={item} onJoin={() => handleJoin(item.id)} />
+          <ClubCard club={item} score={score} onJoin={() => handleJoin(item.id)} />
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>

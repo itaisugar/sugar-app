@@ -24,6 +24,10 @@ import { usePodcastPlayer } from '../../lib/PodcastPlayerContext';
 import { fetchContentItems, FeedItem } from '../../lib/content';
 import { saveItem, unsaveItem, getSavedSubset } from '../../lib/saved';
 import { useLanguage } from '../../lib/LanguageContext';
+import { fetchJoinedClubsActivity, ClubActivity } from '../../lib/clubs';
+import { touchDayStreak } from '../../lib/streak';
+import { getDailyQuote } from '../../lib/quotes';
+import { CLUBS } from '../../constants/MockData';
 
 const CATEGORIES = ['All', 'Science', 'AI', 'Philosophy', 'Performance', 'Geopolitics', 'Business'];
 
@@ -241,18 +245,25 @@ export default function FeedScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clubActivity, setClubActivity] = useState<ClubActivity[]>([]);
+  const quote = getDailyQuote();
 
   const loadFeed = useCallback(async () => {
     setError(null);
     try {
-      const data = await fetchContentItems();
-      // Side-fetch which of these the current user has saved, mark them
+      const [data, activity] = await Promise.all([
+        fetchContentItems(),
+        fetchJoinedClubsActivity(),
+      ]);
       const savedIds = await getSavedSubset(data.map(d => d.id));
       setItems(data.map(d => ({ ...d, isSaved: savedIds.has(d.id) })));
+      setClubActivity(activity);
     } catch (e: any) {
       setError(e?.message ?? 'Could not load the feed. Please try again.');
     }
   }, []);
+
+  useEffect(() => { touchDayStreak().then(() => refreshProfile()).catch(() => {}); }, []);
 
   useEffect(() => {
     (async () => {
@@ -358,7 +369,7 @@ export default function FeedScreen() {
         </View>
         <View style={styles.headerRight}>
           <View style={styles.streakBadge}>
-            <Text style={styles.streakText}>{'✱'}  14 day streak</Text>
+            <Text style={styles.streakText}>{'✱'}  {profile?.day_streak ?? 0} day streak</Text>
           </View>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
@@ -438,6 +449,41 @@ export default function FeedScreen() {
               onRefresh={onRefresh}
               tintColor={Colors.primary}
             />
+          }
+          ListHeaderComponent={
+            <View style={{ gap: 20, marginBottom: 4 }}>
+              {/* Daily quote */}
+              <View style={styles.quoteCard}>
+                <Text style={styles.quoteOverline}>Today · A Thought</Text>
+                <Text style={styles.quoteText}>"{quote.text}"</Text>
+                <Text style={styles.quoteAuthor}>— {quote.author}{quote.source ? `, ${quote.source}` : ''}</Text>
+              </View>
+
+              {/* Club activity */}
+              {clubActivity.length > 0 ? (
+                <View style={styles.clubActivityCard}>
+                  <Text style={styles.quoteOverline}>From Your Clubs</Text>
+                  {clubActivity.slice(0, 4).map(a => {
+                    const club = CLUBS.find(c => c.id === a.club_id);
+                    return (
+                      <Pressable
+                        key={a.comment_id}
+                        onPress={() => router.push({ pathname: '/club/[id]', params: { id: a.club_id } })}
+                        style={({ pressed }) => [styles.activityRow, pressed && { opacity: 0.6 }]}
+                      >
+                        <Text style={styles.activityClub}>{club?.name ?? 'Club'}</Text>
+                        <Text style={styles.activityBody} numberOfLines={2}>
+                          <Text style={{ fontFamily: Fonts.sansSemibold, color: Colors.textPrimary }}>
+                            {a.author_name ?? 'A reader'}
+                          </Text>
+                          {'  '}{a.body}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
+            </View>
           }
           renderItem={({ item }) => (
             <FeedCard
@@ -645,6 +691,61 @@ const styles = StyleSheet.create({
   categoryChipTextActive: {
     color: Colors.primary,
     fontFamily: Fonts.sansSemibold,
+  },
+
+  quoteCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    borderWidth: 0.5,
+    borderColor: Colors.surfaceBorder,
+  },
+  quoteOverline: {
+    fontSize: 10,
+    fontFamily: Fonts.sansMedium,
+    color: Colors.primary,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+  },
+  quoteText: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 16,
+    lineHeight: 24,
+    color: Colors.textPrimary,
+  },
+  quoteAuthor: {
+    marginTop: 10,
+    fontFamily: Fonts.sansMedium,
+    fontSize: 12,
+    color: Colors.textSecondary,
+    letterSpacing: 0.2,
+  },
+  clubActivityCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    borderWidth: 0.5,
+    borderColor: Colors.surfaceBorder,
+  },
+  activityRow: {
+    paddingVertical: 10,
+    borderTopWidth: 0.5,
+    borderColor: Colors.surfaceBorder,
+  },
+  activityClub: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: Colors.primary,
+    marginBottom: 4,
+  },
+  activityBody: {
+    fontFamily: Fonts.serifRegular,
+    fontSize: 13,
+    lineHeight: 19,
+    color: Colors.textSecondary,
   },
 
   // Card

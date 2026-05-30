@@ -233,15 +233,20 @@ export default function ProfileScreen() {
           <View style={styles.section}>
             <View style={styles.statsGrid}>
               {[
-                { value: articlesRead, label: 'Articles Consumed' },
+                { value: articlesRead, label: 'Articles Consumed', onPress: () => router.push('/reading-history') },
                 { value: podcastsListened, label: 'Podcasts Engaged' },
                 { value: booksCompleted, label: 'Books Completed' },
                 { value: plansCompleted, label: 'Plans Executed' },
               ].map(stat => (
-                <View key={stat.label} style={styles.statCard}>
+                <TouchableOpacity
+                  key={stat.label}
+                  activeOpacity={stat.onPress ? 0.8 : 1}
+                  onPress={stat.onPress}
+                  style={styles.statCard}
+                >
                   <Text style={TextStyles.statNumberLarge}>{stat.value}</Text>
                   <Text style={[TextStyles.statLabel, { textAlign: 'center', marginTop: 4 }]}>{stat.label}</Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
 

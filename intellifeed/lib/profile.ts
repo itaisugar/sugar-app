@@ -10,6 +10,8 @@ export type Profile = {
   is_admin: boolean;
   total_score: number;
   weekly_streak: number;
+  day_streak: number;
+  last_seen_on: string | null;
   articles_read: number;
   podcasts_listened: number;
   books_completed: number;
