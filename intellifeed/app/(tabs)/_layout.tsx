@@ -1,12 +1,12 @@
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
-import { Colors, TextStyles } from '../../constants/Theme';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Colors, Fonts, TextStyles } from '../../constants/Theme';
 
-function TabPill({ focused, label }: { focused: boolean; label: string }) {
+function TabButton({ focused, label }: { focused: boolean; label: string }) {
   return (
-    <View style={styles.tabItem}>
-      <Text style={focused ? TextStyles.tabLabelActive : TextStyles.tabLabel}>{label}</Text>
-      {focused ? <View style={styles.activeDot} /> : <View style={styles.dotSpacer} />}
+    <View style={styles.tabBtn}>
+      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
+      <View style={[styles.dot, focused && styles.dotActive]} />
     </View>
   );
 }
@@ -18,23 +18,24 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: styles.tabBar,
         tabBarShowLabel: false,
+        tabBarItemStyle: styles.tabItem,
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ tabBarIcon: ({ focused }) => <TabPill focused={focused} label="Feed" /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabButton focused={focused} label="Feed" /> }}
       />
       <Tabs.Screen
         name="plan"
-        options={{ tabBarIcon: ({ focused }) => <TabPill focused={focused} label="Plan" /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabButton focused={focused} label="Plan" /> }}
       />
       <Tabs.Screen
         name="clubs"
-        options={{ tabBarIcon: ({ focused }) => <TabPill focused={focused} label="Clubs" /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabButton focused={focused} label="Clubs" /> }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ tabBarIcon: ({ focused }) => <TabPill focused={focused} label="Profile" /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabButton focused={focused} label="Profile" /> }}
       />
     </Tabs>
   );
@@ -42,31 +43,40 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: Colors.surface,
-    borderTopWidth: 0.5,
-    borderTopColor: Colors.surfaceBorder,
-    height: 78,
-    paddingBottom: 12,
-    paddingTop: 10,
+    backgroundColor: Colors.background,
+    borderTopWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
+    height: 52,
+    paddingTop: 6,
+    paddingBottom: 6,
   },
   tabItem: {
+    borderRightWidth: 0.5,
+    borderRightColor: Colors.surfaceBorder,
+  },
+  tabBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    minWidth: 60,
+    paddingVertical: 6,
     gap: 4,
   },
-  activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.primary,
-    marginTop: 4,
+  tabLabel: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
   },
-  dotSpacer: {
-    width: 4,
-    height: 4,
-    marginTop: 4,
+  tabLabelActive: {
+    color: Colors.textPrimary,
+    fontFamily: Fonts.sansSemibold,
+  },
+  dot: {
+    width: 3, height: 3, borderRadius: 1.5,
+    backgroundColor: 'transparent',
+  },
+  dotActive: {
+    backgroundColor: Colors.primary,
   },
 });

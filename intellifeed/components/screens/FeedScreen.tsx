@@ -28,6 +28,7 @@ import { fetchJoinedClubsActivity, ClubActivity } from '../../lib/clubs';
 import { touchDayStreak } from '../../lib/streak';
 import { getDailyQuote } from '../../lib/quotes';
 import { CLUBS } from '../../constants/MockData';
+import { getCategoryStyle } from '../../constants/Categories';
 
 const CATEGORIES = ['All', 'Science', 'AI', 'Philosophy', 'Performance', 'Geopolitics', 'Business'];
 
@@ -117,9 +118,15 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
 
         {/* Category + signal */}
         <View style={styles.cardMeta}>
-          <View style={[styles.categoryPill, { borderColor: item.categoryColor + '60' }]}>
-            <Text style={[styles.categoryText, { color: item.categoryColor }]}>{item.category}</Text>
-          </View>
+          {(() => {
+            const s = getCategoryStyle(item.category);
+            return (
+              <View style={[styles.categoryPill, { borderColor: s.color + '50', backgroundColor: s.background }]}>
+                <Text style={[styles.categoryGlyph, { color: s.color }]}>{s.glyph}</Text>
+                <Text style={[styles.categoryText, { color: s.color }]}>{item.category}</Text>
+              </View>
+            );
+          })()}
           <Text style={styles.timestampText}>{item.timestamp}</Text>
         </View>
 
@@ -359,36 +366,26 @@ export default function FeedScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={TextStyles.kicker}>
-            {profile?.full_name ? `Welcome, ${profile.full_name.split(' ')[0]}` : 'Knowledge, Distilled'}
-          </Text>
-          <Text style={[TextStyles.appTitle, { marginTop: 4 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={[TextStyles.appTitle, { fontSize: 26 }]}>
             Sapience<Text style={{ color: Colors.primary }}>.</Text>
           </Text>
+          <TouchableOpacity
+            onPress={onToggleLanguage}
+            style={[styles.langIcon, language === 'he' && styles.langIconActive]}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.langIconText, language === 'he' && styles.langIconTextActive]}>א</Text>
+          </TouchableOpacity>
         </View>
         <View style={styles.headerRight}>
           <View style={styles.streakBadge}>
-            <Text style={styles.streakText}>{'✱'}  {profile?.day_streak ?? 0} day streak</Text>
+            <Text style={styles.streakText}>✱ {profile?.day_streak ?? 0}d</Text>
           </View>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
         </View>
-      </View>
-
-      <Text style={[TextStyles.tagline, styles.tagline]}>Upgrade Your Cognitive Diet.</Text>
-
-      <View style={styles.languageRow}>
-        <TouchableOpacity
-          onPress={onToggleLanguage}
-          style={[styles.languageToggle, language === 'he' && styles.languageToggleActive]}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.languageToggleText, language === 'he' && styles.languageToggleTextActive]}>
-            {language === 'he' ? 'עברית · Tap for English' : 'Translate feed to Hebrew · עברית'}
-          </Text>
-        </TouchableOpacity>
       </View>
 
       <TouchableOpacity
@@ -523,11 +520,28 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
+    paddingTop: Spacing.sm,
     paddingBottom: Spacing.sm,
   },
+  langIcon: {
+    width: 28, height: 28, borderRadius: 14,
+    borderWidth: 0.5, borderColor: Colors.surfaceBorderStrong,
+    backgroundColor: Colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  langIconActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryGlow,
+  },
+  langIconText: {
+    fontFamily: Fonts.serif,
+    fontSize: 15,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  langIconTextActive: { color: Colors.primary },
   headerKicker: {
     fontSize: 11,
     fontFamily: Fonts.sansMedium,
@@ -789,10 +803,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: Radius.full,
     borderWidth: 1,
+  },
+  categoryGlyph: {
+    fontSize: 14,
+    fontFamily: Fonts.serif,
+    lineHeight: 16,
   },
   categoryText: {
     fontSize: 10,
