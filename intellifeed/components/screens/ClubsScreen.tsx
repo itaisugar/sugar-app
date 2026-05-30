@@ -61,11 +61,6 @@ function ClubCard({ club, score, onJoin }: { club: Club; score: number; onJoin: 
             <Text style={styles.statNumber}>{club.weeklyActivity}%</Text>
             <Text style={styles.statLabel}>Weekly Activity</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}>
-            <Text style={styles.statNumber}>{club.requiredScore.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Required Score</Text>
-          </View>
         </View>
 
         {club.currentChallenge && (
@@ -84,14 +79,8 @@ function ClubCard({ club, score, onJoin }: { club: Club; score: number; onJoin: 
         </View>
 
         {!club.isJoined && (
-          <TouchableOpacity
-            style={[styles.joinBtn, !canJoin && styles.joinBtnDisabled]}
-            onPress={canJoin ? onJoin : undefined}
-            disabled={!canJoin}
-          >
-            <Text style={[styles.joinBtnText, !canJoin && styles.joinBtnTextDisabled]}>
-              {canJoin ? 'Request Admission' : `Score ${club.requiredScore} Required`}
-            </Text>
+          <TouchableOpacity style={styles.joinBtn} onPress={onJoin}>
+            <Text style={styles.joinBtnText}>Join the Club</Text>
           </TouchableOpacity>
         )}
 
@@ -161,7 +150,6 @@ export default function ClubsScreen() {
         {[
           { key: 'all', label: 'All Clubs' },
           { key: 'joined', label: 'Mine' },
-          { key: 'available', label: 'Eligible' },
         ].map(f => (
           <TouchableOpacity
             key={f.key}

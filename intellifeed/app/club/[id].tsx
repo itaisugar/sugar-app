@@ -181,7 +181,7 @@ export default function ClubDetailScreen() {
                 <ActivityIndicator size="small" color={isMember ? Colors.primary : Colors.surface} />
               ) : (
                 <Text style={[styles.ctaText, isMember && { color: Colors.primary }]}>
-                  {isMember ? 'Leave' : score >= club.requiredScore ? 'Join' : `${club.requiredScore} pts`}
+                  {isMember ? 'Leave' : 'Join'}
                 </Text>
               )}
             </TouchableOpacity>
