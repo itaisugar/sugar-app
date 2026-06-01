@@ -190,22 +190,22 @@ type AISummary = {
   tags: string[];
 };
 
-async function summarizeUrl(url: string): Promise<AISummary | null> {
+async function summarizeUrl(url: string): Promise<{ summary?: AISummary; error?: string; status?: number }> {
   const res = await fetch(`${SUPABASE_URL}/functions/v1/summarize-url`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Curator-Secret': CURATOR_SECRET!,
-      // Function gateway also requires an apikey to allow the request through.
       apikey: SERVICE_ROLE_KEY!,
       Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
     },
     body: JSON.stringify({ url }),
   });
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (data?.error) return null;
-  return data as AISummary;
+  let body: any = null;
+  try { body = await res.json(); } catch { body = { error: 'non-JSON response' }; }
+  if (!res.ok) return { error: body?.error ?? body?.message ?? 'unknown', status: res.status };
+  if (body?.error) return { error: body.error, status: res.status };
+  return { summary: body as AISummary };
 }
 
 async function insertItem(s: AISummary, kind: 'article' | 'podcast'): Promise<boolean> {
@@ -273,10 +273,13 @@ Deno.serve(async (req: Request) => {
     const cand = fresh.find(c => c.link === pick.link);
     const kind: 'article' | 'podcast' = cand?.kind ?? 'article';
     try {
-      const summary = await summarizeUrl(pick.link);
-      if (!summary) { results.push({ link: pick.link, ok: false, error: 'summarize failed' }); continue; }
-      const ok = await insertItem(summary, kind);
-      results.push({ link: pick.link, ok, title: summary.title });
+      const r = await summarizeUrl(pick.link);
+      if (!r.summary) {
+        results.push({ link: pick.link, ok: false, error: `summarize ${r.status ?? ''}: ${r.error}` });
+        continue;
+      }
+      const ok = await insertItem(r.summary, kind);
+      results.push({ link: pick.link, ok, title: r.summary.title });
     } catch (e) {
       results.push({ link: pick.link, ok: false, error: (e as Error).message });
     }
