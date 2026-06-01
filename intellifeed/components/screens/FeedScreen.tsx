@@ -30,6 +30,7 @@ import { touchDayStreak } from '../../lib/streak';
 import { getDailyQuote } from '../../lib/quotes';
 import { CLUBS } from '../../constants/MockData';
 import { getCategoryStyle } from '../../constants/Categories';
+import { generateBriefing } from '../../lib/briefing';
 
 const CATEGORIES = ['All', 'Science', 'AI', 'Philosophy', 'Performance', 'Geopolitics', 'Business'];
 
@@ -255,7 +256,31 @@ export default function FeedScreen() {
   const [error, setError] = useState<string | null>(null);
   const [clubActivity, setClubActivity] = useState<ClubActivity[]>([]);
   const [followActivity, setFollowActivity] = useState<FollowActivity[]>([]);
+  const [briefingBusy, setBriefingBusy] = useState(false);
+  const [briefingError, setBriefingError] = useState<string | null>(null);
   const quote = getDailyQuote();
+  const player = usePodcastPlayer();
+
+  const onGenerateBriefing = async () => {
+    if (briefingBusy) return;
+    const top3 = items.slice(0, 3);
+    if (top3.length < 1) return;
+    setBriefingBusy(true);
+    setBriefingError(null);
+    try {
+      const b = await generateBriefing(top3.map(i => i.id));
+      await player.play({
+        id: `briefing-${Date.now()}`,
+        title: b.title,
+        source: 'Sapience',
+        audioUrl: b.audio_url,
+      });
+    } catch (e: any) {
+      setBriefingError(e?.message ?? 'Could not generate the briefing.');
+    } finally {
+      setBriefingBusy(false);
+    }
+  };
 
   const loadFeed = useCallback(async () => {
     setError(null);
@@ -454,6 +479,34 @@ export default function FeedScreen() {
           }
           ListHeaderComponent={
             <View style={{ gap: 20, marginBottom: 4 }}>
+              {/* Briefing CTA */}
+              {items.length >= 1 ? (
+                <View style={styles.briefingCard}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.quoteOverline}>Today's Briefing</Text>
+                    <Text style={styles.briefingHeadline}>Three pieces, narrated</Text>
+                    <Text style={styles.briefingSub} numberOfLines={2}>
+                      A short audio brief drawn from the top of your feed.
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={onGenerateBriefing}
+                    disabled={briefingBusy}
+                    activeOpacity={0.85}
+                    style={[styles.briefingBtn, briefingBusy && { opacity: 0.7 }]}
+                  >
+                    {briefingBusy ? (
+                      <ActivityIndicator size="small" color={Colors.surface} />
+                    ) : (
+                      <Text style={styles.briefingBtnText}>▶  Listen</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              {briefingError ? (
+                <Text style={[TextStyles.error, { marginTop: -8 }]}>{briefingError}</Text>
+              ) : null}
+
               {/* Daily quote */}
               <View style={styles.quoteCard}>
                 <Text style={styles.quoteOverline}>Today · A Thought</Text>
@@ -750,6 +803,44 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sansSemibold,
   },
 
+  briefingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: Colors.textPrimary,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+  },
+  briefingHeadline: {
+    fontFamily: Fonts.serif,
+    fontSize: 22,
+    lineHeight: 26,
+    color: Colors.surface,
+    letterSpacing: -0.4,
+    marginTop: 6,
+  },
+  briefingSub: {
+    marginTop: 6,
+    fontFamily: Fonts.serifItalic,
+    fontSize: 13,
+    lineHeight: 18,
+    color: Colors.textFaint,
+  },
+  briefingBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+    backgroundColor: Colors.primary,
+    minWidth: 96,
+    alignItems: 'center',
+  },
+  briefingBtnText: {
+    color: Colors.surface,
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 12,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
   quoteCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
