@@ -22,3 +22,4 @@ intellifeed/expo-env.d.ts
 
 # Parent-level junk
 node_modules/
+supabase/.temp/
