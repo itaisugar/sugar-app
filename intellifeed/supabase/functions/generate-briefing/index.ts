@@ -95,7 +95,7 @@ async function tts(text: string): Promise<ArrayBuffer | null> {
   return await ttsRes.arrayBuffer();
 }
 
-async function upload(bytes: ArrayBuffer): Promise<string | null> {
+async function upload(bytes: ArrayBuffer): Promise<{ url?: string; error?: string }> {
   const filename = `briefing-${crypto.randomUUID()}.mp3`;
   const res = await fetch(
     `${SUPABASE_URL}/storage/v1/object/${SUMMARIES_BUCKET}/${filename}`,
@@ -103,14 +103,19 @@ async function upload(bytes: ArrayBuffer): Promise<string | null> {
       method: 'POST',
       headers: {
         'Content-Type': 'audio/mpeg',
+        apikey: SUPABASE_SERVICE_ROLE_KEY!,
         Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         'x-upsert': 'true',
       },
       body: bytes,
     },
   );
-  if (!res.ok) return null;
-  return `${SUPABASE_URL}/storage/v1/object/public/${SUMMARIES_BUCKET}/${filename}`;
+  if (!res.ok) {
+    let detail = '';
+    try { detail = await res.text(); } catch {}
+    return { error: `storage ${res.status}: ${detail.slice(0, 200)}` };
+  }
+  return { url: `${SUPABASE_URL}/storage/v1/object/public/${SUMMARIES_BUCKET}/${filename}` };
 }
 
 Deno.serve(async (req: Request) => {
@@ -133,8 +138,9 @@ Deno.serve(async (req: Request) => {
   const audioBytes = await tts(script);
   if (!audioBytes) return json({ error: 'TTS generation failed (check OPENAI_API_KEY).' }, 502);
 
-  const audioUrl = await upload(audioBytes);
-  if (!audioUrl) return json({ error: 'Audio upload failed.' }, 502);
+  const up = await upload(audioBytes);
+  if (!up.url) return json({ error: `Audio upload failed — ${up.error ?? 'unknown'}` }, 502);
+  const audioUrl = up.url;
 
   const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const title = `Sapience Briefing — ${date}`;
