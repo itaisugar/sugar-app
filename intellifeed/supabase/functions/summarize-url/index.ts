@@ -285,9 +285,15 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-  // Auth
-  const authCheck = await verifyAdmin(req.headers.get('Authorization'));
-  if (!authCheck.ok) return json({ error: authCheck.message }, authCheck.status);
+  // Auth — accept either an admin user JWT, or a shared curator secret
+  // (set as CURATOR_SECRET) used by the daily auto-curation job.
+  const curatorHeader = req.headers.get('X-Curator-Secret');
+  const curatorSecret = Deno.env.get('CURATOR_SECRET');
+  const isCurator = !!(curatorHeader && curatorSecret && curatorHeader === curatorSecret);
+  if (!isCurator) {
+    const authCheck = await verifyAdmin(req.headers.get('Authorization'));
+    if (!authCheck.ok) return json({ error: authCheck.message }, authCheck.status);
+  }
 
   // Parse body
   let body: { url?: string };
