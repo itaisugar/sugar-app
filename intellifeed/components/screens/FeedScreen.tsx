@@ -31,7 +31,7 @@ import { touchDayStreak } from '../../lib/streak';
 import { getDailyQuote } from '../../lib/quotes';
 import { CLUBS } from '../../constants/MockData';
 import { getCategoryStyle } from '../../constants/Categories';
-import { generateBriefing } from '../../lib/briefing';
+import { generateBriefing, type Briefing } from '../../lib/briefing';
 
 const CATEGORIES = ['All', 'Science', 'AI', 'Philosophy', 'Performance', 'Geopolitics', 'Business'];
 
@@ -116,10 +116,10 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
             style={styles.cardHeroBg}
             resizeMode="cover"
           >
-            {/* subtle tint on top half */}
-            <View style={[styles.cardScrimTop, { backgroundColor: categoryStyle.gradientEnd + '22' }]} />
-            {/* stronger gradient on bottom half where text lives */}
-            <View style={[styles.cardScrimBottom, { backgroundColor: categoryStyle.gradientStart + 'DD' }]} />
+            {/* subtle tint on top portion */}
+            <View style={[styles.cardScrimTop, { backgroundColor: categoryStyle.gradientEnd + '30' }]} />
+            {/* strong dark scrim on bottom — ensures text is always readable */}
+            <View style={[styles.cardScrimBottom, { backgroundColor: categoryStyle.gradientStart + 'F0' }]} />
             <View style={styles.cardOverlay}>
               <View style={styles.cardOverlayTop}>
                 <View style={styles.categoryPillOverlay}>
@@ -249,22 +249,39 @@ export default function FeedScreen() {
   const [followActivity, setFollowActivity] = useState<FollowActivity[]>([]);
   const [briefingBusy, setBriefingBusy] = useState(false);
   const [briefingError, setBriefingError] = useState<string | null>(null);
+  const [briefing, setBriefing] = useState<(Briefing & { trackId: string }) | null>(null);
+  const [showScript, setShowScript] = useState(false);
   const quote = getDailyQuote();
   const player = usePodcastPlayer();
 
+  const briefingActive = !!briefing && player.isActive(briefing.trackId);
+  const briefingPlaying = briefingActive && player.isPlaying;
+
   const onGenerateBriefing = async () => {
     if (briefingBusy) return;
+    // Already have a briefing for this session — toggle play/pause instead of regenerating
+    if (briefingActive) {
+      if (briefingPlaying) await player.pause();
+      else await player.resume();
+      return;
+    }
     const top3 = items.slice(0, 3);
     if (top3.length < 1) return;
     setBriefingBusy(true);
     setBriefingError(null);
     try {
       const b = await generateBriefing(top3.map(i => i.id));
+      const trackId = `briefing-${Date.now()}`;
+      setBriefing({ ...b, trackId });
+      setShowScript(true);
       await player.play({
-        id: `briefing-${Date.now()}`,
+        id: trackId,
         title: b.title,
         source: 'Sapience',
         audioUrl: b.audio_url,
+        // Fallback: if the MP3 can't be loaded (e.g. on web), narrate the script
+        // with on-device TTS so the briefing still plays.
+        ttsText: b.script,
       });
     } catch (e: any) {
       setBriefingError(e?.message ?? 'Could not generate the briefing.');
@@ -474,23 +491,47 @@ export default function FeedScreen() {
             <View style={{ gap: 16, marginBottom: 4 }}>
               {/* Briefing strip */}
               {items.length >= 1 ? (
-                <TouchableOpacity
-                  onPress={onGenerateBriefing}
-                  disabled={briefingBusy}
-                  activeOpacity={0.85}
-                  style={[styles.briefingStrip, briefingBusy && { opacity: 0.7 }]}
-                >
-                  <View style={styles.briefingPlayBtn}>
-                    {briefingBusy
-                      ? <ActivityIndicator size="small" color={Colors.white} />
-                      : <Text style={styles.briefingPlayIcon}>▶</Text>}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.briefingStripTitle}>Today's Briefing</Text>
-                    <Text style={styles.briefingStripSub}>Three pieces · narrated</Text>
-                  </View>
-                  <Text style={styles.briefingStripArrow}>›</Text>
-                </TouchableOpacity>
+                <View>
+                  <TouchableOpacity
+                    onPress={onGenerateBriefing}
+                    disabled={briefingBusy}
+                    activeOpacity={0.85}
+                    style={[styles.briefingStrip, briefingBusy && { opacity: 0.7 }]}
+                  >
+                    <View style={styles.briefingPlayBtn}>
+                      {briefingBusy
+                        ? <ActivityIndicator size="small" color={Colors.white} />
+                        : <Text style={styles.briefingPlayIcon}>{briefingPlaying ? '❚❚' : '▶'}</Text>}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.briefingStripTitle} numberOfLines={1}>
+                        {briefingActive ? briefing!.title : "Today's Briefing"}
+                      </Text>
+                      <Text style={styles.briefingStripSub}>
+                        {briefingBusy
+                          ? 'Preparing your briefing…'
+                          : briefingActive
+                            ? (briefingPlaying ? 'Now playing · tap to pause' : 'Paused · tap to resume')
+                            : 'Three pieces · narrated'}
+                      </Text>
+                    </View>
+                    {briefing ? (
+                      <TouchableOpacity
+                        onPress={() => setShowScript(s => !s)}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      >
+                        <Text style={styles.briefingStripArrow}>{showScript ? '⌄' : '›'}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={styles.briefingStripArrow}>›</Text>
+                    )}
+                  </TouchableOpacity>
+                  {briefing && showScript ? (
+                    <View style={styles.briefingScriptCard}>
+                      <Text style={styles.briefingScriptText}>{briefing.script}</Text>
+                    </View>
+                  ) : null}
+                </View>
               ) : null}
               {briefingError ? (
                 <Text style={[TextStyles.error, { marginTop: -8 }]}>{briefingError}</Text>
@@ -770,6 +811,21 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     lineHeight: 24,
   },
+  briefingScriptCard: {
+    marginTop: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    borderLeftWidth: 2,
+    borderLeftColor: Colors.primary,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
+  },
+  briefingScriptText: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    lineHeight: 22,
+    color: Colors.textSecondary,
+  },
 
   // ─── Quote ───────────────────────────────────────────────────────────────
   quoteCard: {
@@ -873,17 +929,17 @@ const styles = StyleSheet.create({
     height: 185,
     justifyContent: 'flex-end',
   },
-  // top half — very light tint so image is visible
+  // top portion — very light tint, image visible
   cardScrimTop: {
     position: 'absolute',
     top: 0, left: 0, right: 0,
-    height: '55%',
+    height: '45%',
   },
-  // bottom half — darker so text is readable
+  // bottom portion — opaque enough for white text to be readable
   cardScrimBottom: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
-    height: '65%',
+    height: '72%',
   },
   cardOverlay: {
     padding: Spacing.base,
