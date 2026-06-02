@@ -1,15 +1,70 @@
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Colors, Fonts, TextStyles } from '../../constants/Theme';
+import { View, Text, StyleSheet } from 'react-native';
+import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
+import { Colors, Fonts } from '../../constants/Theme';
 
-function TabButton({ focused, label }: { focused: boolean; label: string }) {
+// ─── SVG Icons ────────────────────────────────────────────────────────────────
+
+function IconFeed({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Rect x="3" y="4" width="18" height="3" rx="1.5" fill={color} />
+      <Rect x="3" y="10.5" width="12" height="3" rx="1.5" fill={color} opacity="0.6" />
+      <Rect x="3" y="17" width="15" height="3" rx="1.5" fill={color} opacity="0.35" />
+    </Svg>
+  );
+}
+
+function IconPlan({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Rect x="3" y="3" width="18" height="18" rx="3" stroke={color} strokeWidth="1.8" />
+      <Line x1="7" y1="9" x2="17" y2="9" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+      <Line x1="7" y1="13" x2="14" y2="13" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+      <Line x1="7" y1="17" x2="11" y2="17" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function IconClubs({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Circle cx="9" cy="8" r="3.2" stroke={color} strokeWidth="1.8" />
+      <Circle cx="17" cy="9" r="2.4" stroke={color} strokeWidth="1.6" />
+      <Path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+      <Path d="M17 14c1.7.4 3 2 3 4" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function IconProfile({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="8" r="3.5" stroke={color} strokeWidth="1.8" />
+      <Path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+// ─── Tab Button ───────────────────────────────────────────────────────────────
+
+type TabConfig = {
+  focused: boolean;
+  label: string;
+  icon: (color: string) => React.ReactNode;
+};
+
+function TabButton({ focused, label, icon }: TabConfig) {
+  const color = focused ? Colors.primary : Colors.textFaint;
   return (
     <View style={styles.tabBtn}>
+      {icon(color)}
       <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
-      <View style={[styles.dot, focused && styles.dotActive]} />
     </View>
   );
 }
+
+// ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default function TabLayout() {
   return (
@@ -23,60 +78,69 @@ export default function TabLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ tabBarIcon: ({ focused }) => <TabButton focused={focused} label="Feed" /> }}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabButton focused={focused} label="Feed" icon={(c) => <IconFeed color={c} />} />
+          ),
+        }}
       />
       <Tabs.Screen
         name="plan"
-        options={{ tabBarIcon: ({ focused }) => <TabButton focused={focused} label="Plan" /> }}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabButton focused={focused} label="Plan" icon={(c) => <IconPlan color={c} />} />
+          ),
+        }}
       />
       <Tabs.Screen
         name="clubs"
-        options={{ tabBarIcon: ({ focused }) => <TabButton focused={focused} label="Clubs" /> }}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabButton focused={focused} label="Clubs" icon={(c) => <IconClubs color={c} />} />
+          ),
+        }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ tabBarIcon: ({ focused }) => <TabButton focused={focused} label="Profile" /> }}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabButton focused={focused} label="Profile" icon={(c) => <IconProfile color={c} />} />
+          ),
+        }}
       />
     </Tabs>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: Colors.background,
-    borderTopWidth: 0,
+    borderTopWidth: 1,
+    borderTopColor: Colors.surfaceBorder,
     elevation: 0,
     shadowOpacity: 0,
-    height: 52,
+    height: 62,
     paddingTop: 6,
-    paddingBottom: 6,
+    paddingBottom: 8,
   },
   tabItem: {
-    borderRightWidth: 1,
-    borderRightColor: Colors.surfaceBorderStrong,
+    flex: 1,
   },
   tabBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    gap: 4,
+    gap: 3,
   },
   tabLabel: {
     fontFamily: Fonts.sansMedium,
-    fontSize: 11,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: Colors.textMuted,
+    fontSize: 10,
+    letterSpacing: 0.3,
+    color: Colors.textFaint,
   },
   tabLabelActive: {
-    color: Colors.textPrimary,
+    color: Colors.primary,
     fontFamily: Fonts.sansSemibold,
-  },
-  dot: {
-    width: 3, height: 3, borderRadius: 1.5,
-    backgroundColor: 'transparent',
-  },
-  dotActive: {
-    backgroundColor: Colors.primary,
   },
 });

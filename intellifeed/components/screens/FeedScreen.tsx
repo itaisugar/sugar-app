@@ -83,13 +83,11 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
         source: item.source,
         audioUrl: item.audioUrl,
         imageUrl: item.image,
-        // Used as device-TTS fallback when no audioUrl is set on the item
         ttsText: `${item.title}. ${item.summary}`,
       });
     }
   };
 
-  // Live progress fraction (0-1) when this episode is active
   const progressFraction =
     isThisActive && player.durationMs > 0
       ? Math.min(1, player.positionMs / player.durationMs)
@@ -101,65 +99,52 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
     router.push({ pathname: '/article/[id]', params: { id: item.id } });
   };
 
+  const categoryStyle = getCategoryStyle(item.category);
+
   return (
     <View style={styles.card}>
-      {/* Source provenance */}
-      <View style={styles.sourceBadge}>
-        <Text style={styles.sourceBadgeText}>
-          {SOURCE_LABELS[item.contentSource] ?? "From the Editor's Desk"}
-        </Text>
-      </View>
-
-      {/* Editorial content — tap to open the full article */}
+      {/* Tap area — title + thumbnail + meta */}
       <Pressable
         onPress={openArticle}
         android_ripple={{ color: Colors.surfaceBorder }}
-        style={({ pressed }) => [pressed && { opacity: 0.92 }]}
+        style={({ pressed }) => [styles.cardPressable, pressed && { opacity: 0.9 }]}
       >
-        <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
-
-        {/* Category + signal */}
-        <View style={styles.cardMeta}>
-          {(() => {
-            const s = getCategoryStyle(item.category);
-            return (
-              <View style={[styles.categoryPill, { borderColor: s.color + '50', backgroundColor: s.background }]}>
-                <Text style={[styles.categoryGlyph, { color: s.color }]}>{s.glyph}</Text>
-                <Text style={[styles.categoryText, { color: s.color }]}>{item.category}</Text>
-              </View>
-            );
-          })()}
+        {/* Top row: category pill + timestamp */}
+        <View style={styles.cardTopRow}>
+          <View style={[styles.categoryPill, { borderColor: categoryStyle.color + '40', backgroundColor: categoryStyle.background }]}>
+            <Text style={[styles.categoryGlyph, { color: categoryStyle.color }]}>{categoryStyle.glyph}</Text>
+            <Text style={[styles.categoryText, { color: categoryStyle.color }]}>{item.category}</Text>
+          </View>
           <Text style={styles.timestampText}>{item.timestamp}</Text>
         </View>
 
-        <Text style={[TextStyles.cardTitle, styles.cardTitle, rtlText]}>{displayTitle}</Text>
-        {isTranslating ? (
-          <View style={[styles.cardSummary, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
-            <ActivityIndicator size="small" color={Colors.primary} />
-            <Text style={TextStyles.helper}>מתרגם לעברית…</Text>
+        {/* Content row: text left, thumbnail right */}
+        <View style={styles.contentRow}>
+          <View style={styles.contentLeft}>
+            <Text style={[styles.cardTitle, rtlText]} numberOfLines={3}>
+              {displayTitle}
+            </Text>
+            {isTranslating ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={TextStyles.helper}>מתרגם…</Text>
+              </View>
+            ) : (
+              <Text style={[styles.cardHook, rtlText]} numberOfLines={2}>
+                {displayHook}
+              </Text>
+            )}
           </View>
-        ) : (
-          <Text style={[TextStyles.bodySecondary, styles.cardSummary, rtlText]} numberOfLines={3}>
-            {displayHook}
-          </Text>
-        )}
+          {item.image ? (
+            <Image source={{ uri: item.image }} style={styles.cardThumbnail} resizeMode="cover" />
+          ) : null}
+        </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsRow}>
-          {item.tags.map(tag => (
-            <View key={tag} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
-        </ScrollView>
-
+        {/* Source + read time + CTA */}
         <View style={styles.sourceRow}>
-          <View style={styles.sourceAvatarBox}>
-            <Text style={styles.sourceAvatar}>{item.sourceAvatar}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sourceName}>{item.source}</Text>
-            <Text style={styles.readTime}>{item.readTime} min read</Text>
-          </View>
+          <Text style={styles.sourceName}>{item.source}</Text>
+          <Text style={styles.readTimeDot}>·</Text>
+          <Text style={styles.readTime}>{item.readTime} min read</Text>
           {item.contentUrl ? (
             <View style={[
               styles.readMorePill,
@@ -178,65 +163,67 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
         </View>
       </Pressable>
 
+      {/* Audio player — slim strip */}
       <TouchableOpacity
-        style={[styles.podcastPlayer, isThisActive && styles.podcastPlayerActive]}
+        style={[styles.audioStrip, isThisActive && styles.audioStripActive]}
         onPress={onTogglePlay}
         activeOpacity={0.85}
       >
-        <View style={styles.playButton}>
+        <View style={[styles.playBtn, isThisActive && styles.playBtnActive]}>
           {isThisLoading ? (
-            <ActivityIndicator size="small" color={Colors.white} />
+            <ActivityIndicator size="small" color={isThisActive ? Colors.white : Colors.primary} />
           ) : (
-            <Text style={styles.playIcon}>{isThisPlaying ? '❚❚' : '▶'}</Text>
+            <Text style={[styles.playIcon, isThisActive && styles.playIconActive]}>
+              {isThisPlaying ? '❚❚' : '▶'}
+            </Text>
           )}
         </View>
+
         <View style={{ flex: 1 }}>
-          <Text style={styles.podcastLabel}>
-            {(() => {
-              const hasMP3 = !!item.audioUrl;
-              if (isThisActive && isThisPlaying) return hasMP3 ? 'Now Playing' : 'Narrating';
-              if (isThisActive && !isThisPlaying) return 'Paused';
-              return hasMP3 ? 'Listen — Distilled Audio' : 'Listen to summary';
-            })()}
-          </Text>
-          {item.audioUrl ? (
+          {item.audioUrl && isThisActive ? (
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${progressFraction * 100}%` }]} />
             </View>
           ) : (
-            <Text style={styles.podcastSubLabel}>
-              {isThisActive ? 'Tap to stop' : 'AI voice · ~1 min'}
+            <Text style={styles.audioLabel}>
+              {isThisPlaying ? 'Now playing' : isThisActive ? 'Paused' : item.audioUrl ? 'Listen · Distilled Audio' : 'Listen · AI summary'}
             </Text>
           )}
         </View>
-        <Text style={styles.podcastDuration}>
+
+        <Text style={styles.audioDuration}>
           {isThisActive && player.durationMs > 0
             ? `${formatMs(player.positionMs)} / ${formatMs(player.durationMs)}`
-            : item.podcastDuration
-              ? formatDuration(item.podcastDuration)
-              : ''}
+            : item.podcastDuration ? formatDuration(item.podcastDuration) : ''}
         </Text>
       </TouchableOpacity>
 
+      {/* Actions */}
       <View style={styles.actionsRow}>
         <TouchableOpacity style={styles.actionBtn} onPress={onLike}>
           <Text style={[styles.actionIcon, item.isLiked && styles.actionIconActive]}>
             {item.isLiked ? '♥' : '♡'}
           </Text>
-          <Text style={styles.actionCount}>{item.likes.toLocaleString()}</Text>
+          <Text style={[styles.actionCount, item.isLiked && styles.actionCountActive]}>
+            {item.likes.toLocaleString()}
+          </Text>
         </TouchableOpacity>
+
         <TouchableOpacity style={styles.actionBtn} onPress={onSave}>
           <Text style={[styles.actionIcon, item.isSaved && styles.actionIconActive]}>
             {item.isSaved ? '★' : '☆'}
           </Text>
-          <Text style={styles.actionCount}>{item.saves.toLocaleString()}</Text>
+          <Text style={[styles.actionCount, item.isSaved && styles.actionCountActive]}>
+            {item.saves.toLocaleString()}
+          </Text>
         </TouchableOpacity>
+
         <TouchableOpacity style={styles.actionBtn}>
           <Text style={styles.actionIcon}>↗</Text>
-          <Text style={styles.actionCount}>Share</Text>
         </TouchableOpacity>
+
         <TouchableOpacity style={styles.planBtn}>
-          <Text style={styles.planBtnText}>Add to Plan</Text>
+          <Text style={styles.planBtnText}>+ Plan</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -395,13 +382,15 @@ export default function FeedScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={[TextStyles.appTitle, { fontSize: 26 }]}>
+        <Text style={TextStyles.appTitle}>
           Sapience<Text style={{ color: Colors.primary }}>.</Text>
         </Text>
         <View style={styles.headerRight}>
-          <View style={styles.streakBadge}>
-            <Text style={styles.streakText}>✱ {profile?.day_streak ?? 0} days streak</Text>
-          </View>
+          {(profile?.day_streak ?? 0) > 0 && (
+            <View style={styles.streakBadge}>
+              <Text style={styles.streakText}>✱ {profile?.day_streak}</Text>
+            </View>
+          )}
           <TouchableOpacity
             onPress={onToggleLanguage}
             style={[styles.langIcon, language === 'he' && styles.langIconActive]}
@@ -478,53 +467,48 @@ export default function FeedScreen() {
             />
           }
           ListHeaderComponent={
-            <View style={{ gap: 20, marginBottom: 4 }}>
-              {/* Briefing CTA */}
+            <View style={{ gap: 16, marginBottom: 4 }}>
+              {/* Briefing strip */}
               {items.length >= 1 ? (
-                <View style={styles.briefingCard}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.quoteOverline}>Today's Briefing</Text>
-                    <Text style={styles.briefingHeadline}>Three pieces, narrated</Text>
-                    <Text style={styles.briefingSub} numberOfLines={2}>
-                      A short audio brief drawn from the top of your feed.
-                    </Text>
+                <TouchableOpacity
+                  onPress={onGenerateBriefing}
+                  disabled={briefingBusy}
+                  activeOpacity={0.85}
+                  style={[styles.briefingStrip, briefingBusy && { opacity: 0.7 }]}
+                >
+                  <View style={styles.briefingPlayBtn}>
+                    {briefingBusy
+                      ? <ActivityIndicator size="small" color={Colors.white} />
+                      : <Text style={styles.briefingPlayIcon}>▶</Text>}
                   </View>
-                  <TouchableOpacity
-                    onPress={onGenerateBriefing}
-                    disabled={briefingBusy}
-                    activeOpacity={0.85}
-                    style={[styles.briefingBtn, briefingBusy && { opacity: 0.7 }]}
-                  >
-                    {briefingBusy ? (
-                      <ActivityIndicator size="small" color={Colors.surface} />
-                    ) : (
-                      <Text style={styles.briefingBtnText}>▶  Listen</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.briefingStripTitle}>Today's Briefing</Text>
+                    <Text style={styles.briefingStripSub}>Three pieces · narrated</Text>
+                  </View>
+                  <Text style={styles.briefingStripArrow}>›</Text>
+                </TouchableOpacity>
               ) : null}
               {briefingError ? (
                 <Text style={[TextStyles.error, { marginTop: -8 }]}>{briefingError}</Text>
               ) : null}
 
-              {/* Daily quote */}
+              {/* Daily quote — compact */}
               <View style={styles.quoteCard}>
-                <Text style={styles.quoteOverline}>Today · A Thought</Text>
                 <Text style={styles.quoteText}>"{quote.text}"</Text>
                 <Text style={styles.quoteAuthor}>— {quote.author}{quote.source ? `, ${quote.source}` : ''}</Text>
               </View>
 
               {/* Following activity */}
               {followActivity.length > 0 ? (
-                <View style={styles.clubActivityCard}>
-                  <Text style={styles.quoteOverline}>From People You Follow</Text>
-                  {followActivity.slice(0, 5).map(a => {
+                <View style={styles.activityCard}>
+                  <Text style={styles.activityCardLabel}>From People You Follow</Text>
+                  {followActivity.slice(0, 4).map(a => {
                     const initials = (a.author_name ?? '·').trim().charAt(0).toUpperCase();
                     return (
                       <Pressable
                         key={a.id}
                         onPress={() => router.push({ pathname: '/article/[id]', params: { id: a.content_id } })}
-                        style={({ pressed }) => [styles.followRow, pressed && { opacity: 0.6 }]}
+                        style={({ pressed }) => [styles.activityRow, pressed && { opacity: 0.6 }]}
                       >
                         <View style={styles.followAvatar}>
                           <Text style={styles.followAvatarText}>{initials}</Text>
@@ -534,9 +518,10 @@ export default function FeedScreen() {
                             <Text style={{ fontFamily: Fonts.sansSemibold, color: Colors.textPrimary }}>
                               {a.author_name ?? 'A reader'}
                             </Text>
-                            <Text style={{ color: Colors.textMuted }}>  {activityVerb(a)}</Text>
+                            {'  '}
+                            <Text style={{ color: Colors.textMuted }}>{activityVerb(a)}</Text>
                           </Text>
-                          <Text style={styles.followTitle} numberOfLines={2}>{a.content_title}</Text>
+                          <Text style={styles.followTitle} numberOfLines={1}>{a.content_title}</Text>
                         </View>
                       </Pressable>
                     );
@@ -546,9 +531,9 @@ export default function FeedScreen() {
 
               {/* Club activity */}
               {clubActivity.length > 0 ? (
-                <View style={styles.clubActivityCard}>
-                  <Text style={styles.quoteOverline}>From Your Clubs</Text>
-                  {clubActivity.slice(0, 4).map(a => {
+                <View style={styles.activityCard}>
+                  <Text style={styles.activityCardLabel}>From Your Clubs</Text>
+                  {clubActivity.slice(0, 3).map(a => {
                     const club = CLUBS.find(c => c.id === a.club_id);
                     return (
                       <Pressable
@@ -556,13 +541,15 @@ export default function FeedScreen() {
                         onPress={() => router.push({ pathname: '/club/[id]', params: { id: a.club_id } })}
                         style={({ pressed }) => [styles.activityRow, pressed && { opacity: 0.6 }]}
                       >
-                        <Text style={styles.activityClub}>{club?.name ?? 'Club'}</Text>
-                        <Text style={styles.activityBody} numberOfLines={2}>
-                          <Text style={{ fontFamily: Fonts.sansSemibold, color: Colors.textPrimary }}>
-                            {a.author_name ?? 'A reader'}
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.clubLabel}>{club?.name ?? 'Club'}</Text>
+                          <Text style={styles.activityBody} numberOfLines={2}>
+                            <Text style={{ fontFamily: Fonts.sansSemibold, color: Colors.textPrimary }}>
+                              {a.author_name ?? 'A reader'}
+                            </Text>
+                            {'  '}{a.body}
                           </Text>
-                          {'  '}{a.body}
-                        </Text>
+                        </View>
                       </Pressable>
                     );
                   })}
@@ -803,129 +790,131 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sansSemibold,
   },
 
-  briefingCard: {
+  // Briefing strip
+  briefingStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
     backgroundColor: Colors.textPrimary,
     borderRadius: Radius.lg,
-    padding: Spacing.lg,
-  },
-  briefingHeadline: {
-    fontFamily: Fonts.serif,
-    fontSize: 22,
-    lineHeight: 26,
-    color: Colors.surface,
-    letterSpacing: -0.4,
-    marginTop: 6,
-  },
-  briefingSub: {
-    marginTop: 6,
-    fontFamily: Fonts.serifItalic,
-    fontSize: 13,
-    lineHeight: 18,
-    color: Colors.textFaint,
-  },
-  briefingBtn: {
-    paddingHorizontal: 18,
+    paddingHorizontal: Spacing.base,
     paddingVertical: 12,
-    borderRadius: 999,
+  },
+  briefingPlayBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: Colors.primary,
-    minWidth: 96,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  briefingBtnText: {
-    color: Colors.surface,
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 12,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  quoteCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    borderWidth: 0.5,
-    borderColor: Colors.surfaceBorder,
-  },
-  quoteOverline: {
+  briefingPlayIcon: {
     fontSize: 10,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.primary,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom: 10,
+    color: Colors.white,
+    fontFamily: Fonts.sansBold,
+  },
+  briefingStripTitle: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 14,
+    color: Colors.surface,
+    letterSpacing: -0.1,
+  },
+  briefingStripSub: {
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    color: Colors.textFaint,
+    marginTop: 2,
+  },
+  briefingStripArrow: {
+    fontSize: 20,
+    color: Colors.textFaint,
+    lineHeight: 22,
+  },
+  // Quote
+  quoteCard: {
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.md,
+    borderLeftWidth: 2,
+    borderLeftColor: Colors.primary + '60',
+    gap: 6,
   },
   quoteText: {
     fontFamily: Fonts.serifItalic,
-    fontSize: 16,
-    lineHeight: 24,
-    color: Colors.textPrimary,
+    fontSize: 14,
+    lineHeight: 21,
+    color: Colors.textSecondary,
   },
   quoteAuthor: {
-    marginTop: 10,
     fontFamily: Fonts.sansMedium,
-    fontSize: 12,
-    color: Colors.textSecondary,
+    fontSize: 11,
+    color: Colors.textMuted,
     letterSpacing: 0.2,
   },
-  clubActivityCard: {
+  // Activity cards
+  activityCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    borderWidth: 0.5,
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+    borderWidth: 1,
     borderColor: Colors.surfaceBorder,
   },
-  activityRow: {
-    paddingVertical: 10,
-    borderTopWidth: 0.5,
-    borderColor: Colors.surfaceBorder,
-  },
-  activityClub: {
-    fontFamily: Fonts.sansSemibold,
+  activityCardLabel: {
     fontSize: 10,
+    fontFamily: Fonts.sansSemibold,
+    color: Colors.primary,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    color: Colors.primary,
-    marginBottom: 4,
+    marginBottom: Spacing.sm,
   },
-  activityBody: {
-    fontFamily: Fonts.serifRegular,
-    fontSize: 13,
-    lineHeight: 19,
-    color: Colors.textSecondary,
-  },
-  followRow: {
+  activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 10,
-    borderTopWidth: 0.5,
-    borderColor: Colors.surfaceBorder,
+    paddingVertical: 9,
+    borderTopWidth: 1,
+    borderTopColor: Colors.surfaceBorder,
+  },
+  clubLabel: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: Colors.primary,
+    marginBottom: 3,
+  },
+  activityBody: {
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    lineHeight: 18,
+    color: Colors.textSecondary,
   },
   followAvatar: {
-    width: 32, height: 32, borderRadius: 16,
+    width: 28, height: 28, borderRadius: 14,
     backgroundColor: Colors.primaryGlow,
-    borderWidth: 0.5, borderColor: Colors.primary + '40',
+    borderWidth: 1, borderColor: Colors.primary + '30',
     alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
   },
   followAvatarText: {
-    fontFamily: Fonts.serif, fontSize: 13,
+    fontFamily: Fonts.sansSemibold, fontSize: 12,
     color: Colors.primary,
   },
   followLine: {
     fontFamily: Fonts.sans, fontSize: 12,
     lineHeight: 16,
+    color: Colors.textSecondary,
   },
   followTitle: {
-    marginTop: 3,
-    fontFamily: Fonts.serif,
-    fontSize: 13,
-    lineHeight: 18,
+    marginTop: 2,
+    fontFamily: Fonts.sansMedium,
+    fontSize: 12,
+    lineHeight: 17,
     color: Colors.textPrimary,
   },
 
-  // Card
+  // ─── Card ────────────────────────────────────────────────────────────────
   card: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
@@ -933,140 +922,94 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
   },
-  sourceBadge: {
+  cardPressable: {
+    padding: Spacing.base,
+    gap: Spacing.md,
+  },
+  // Top row
+  cardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.base,
-    paddingBottom: Spacing.sm,
-  },
-  sourceBadgeText: {
-    fontSize: 10,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.primary,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  friendsText: {
-    fontSize: 11,
-    fontFamily: Fonts.sans,
-    color: Colors.textSecondary,
-    fontStyle: 'italic',
-  },
-  cardImage: {
-    width: '100%',
-    height: 200,
-  },
-  cardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.base,
-    gap: 8,
   },
   categoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
     borderRadius: Radius.full,
     borderWidth: 1,
   },
   categoryGlyph: {
-    fontSize: 14,
-    fontFamily: Fonts.serif,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 14,
   },
   categoryText: {
     fontSize: 10,
     fontFamily: Fonts.sansSemibold,
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
-  },
-  trendingBadge: {
-    borderWidth: 1,
-    borderColor: Colors.primary + '40',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: Radius.full,
-  },
-  trendingText: {
-    fontSize: 10,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.primary,
-    letterSpacing: 1,
   },
   timestampText: {
     fontSize: 11,
     fontFamily: Fonts.sans,
     color: Colors.textMuted,
-    marginLeft: 'auto',
+  },
+  // Content row: text + thumbnail
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.md,
+  },
+  contentLeft: {
+    flex: 1,
+    gap: 6,
   },
   cardTitle: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 16,
+    lineHeight: 22,
+    letterSpacing: -0.2,
+    color: Colors.textPrimary,
   },
-  cardSummary: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-  },
-  tagsRow: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.base,
-  },
-  tag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
-    marginRight: 6,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-  },
-  tagText: {
-    fontSize: 10,
-    fontFamily: Fonts.sansMedium,
+  cardHook: {
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    lineHeight: 19,
     color: Colors.textSecondary,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
   },
+  cardThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: Radius.md,
+    flexShrink: 0,
+  },
+  // Source row
   sourceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.base,
-    gap: 12,
-  },
-  sourceAvatarBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-  },
-  sourceAvatar: {
-    fontSize: 16,
-    color: Colors.primary,
+    gap: 6,
+    flexWrap: 'wrap',
   },
   sourceName: {
-    fontSize: 13,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.textPrimary,
-    letterSpacing: 0.2,
+    fontSize: 12,
+    fontFamily: Fonts.sansMedium,
+    color: Colors.textMuted,
+  },
+  readTimeDot: {
+    fontSize: 12,
+    color: Colors.textFaint,
   },
   readTime: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: Fonts.sans,
     color: Colors.textMuted,
-    marginTop: 2,
   },
   readMorePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    marginLeft: 'auto',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: Radius.sm,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
@@ -1074,67 +1017,64 @@ const styles = StyleSheet.create({
   },
   readMoreText: {
     fontFamily: Fonts.sansSemibold,
-    fontSize: 11,
+    fontSize: 10,
     color: Colors.primary,
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   spotifyPill: {
     backgroundColor: '#1DB95412',
     borderColor: '#1DB95440',
   },
-  spotifyPillText: {
-    color: '#0F8E3F',
-  },
+  spotifyPillText: { color: '#0F8E3F' },
   kindlePill: {
     backgroundColor: '#C8782A14',
     borderColor: '#C8782A50',
   },
-  kindlePillText: {
-    color: '#A0561B',
-  },
-  podcastPlayer: {
+  kindlePillText: { color: '#A0561B' },
+  // Audio strip
+  audioStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surfaceMuted,
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.base,
-    borderRadius: Radius.md,
-    padding: Spacing.base,
-    gap: 12,
+    gap: 10,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.surfaceBorder,
+  },
+  audioStripActive: {
+    backgroundColor: Colors.primaryGlow,
+  },
+  playBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-  },
-  podcastPlayerActive: {
-    borderColor: Colors.primary,
-  },
-  playButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.primary,
+    borderColor: Colors.primary + '60',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.background,
+  },
+  playBtnActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   playIcon: {
-    fontSize: 12,
-    color: Colors.background,
+    fontSize: 10,
+    color: Colors.primary,
     fontFamily: Fonts.sansBold,
   },
-  podcastLabel: {
+  playIconActive: {
+    color: Colors.white,
+  },
+  audioLabel: {
     fontSize: 11,
     fontFamily: Fonts.sansMedium,
-    color: Colors.textSecondary,
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  podcastSubLabel: {
-    fontFamily: Fonts.serifItalic,
-    fontSize: 11,
     color: Colors.textMuted,
+    letterSpacing: 0.3,
   },
   progressBar: {
     height: 2,
-    backgroundColor: Colors.surfaceBorder,
+    backgroundColor: Colors.surfaceBorderStrong,
     borderRadius: 1,
   },
   progressFill: {
@@ -1142,30 +1082,33 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderRadius: 1,
   },
-  podcastDuration: {
-    fontSize: 11,
+  audioDuration: {
+    fontSize: 10,
     fontFamily: Fonts.sansMedium,
     color: Colors.textMuted,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
+  // Actions
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.base,
-    paddingBottom: Spacing.lg,
-    gap: 6,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.surfaceBorder,
+    gap: 4,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     paddingVertical: 6,
     paddingHorizontal: 8,
+    borderRadius: Radius.sm,
   },
   actionIcon: {
-    fontSize: 16,
-    color: Colors.textMuted,
+    fontSize: 15,
+    color: Colors.textFaint,
   },
   actionIconActive: {
     color: Colors.primary,
@@ -1173,23 +1116,25 @@ const styles = StyleSheet.create({
   actionCount: {
     fontSize: 11,
     fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    letterSpacing: 0.3,
+    color: Colors.textFaint,
+  },
+  actionCountActive: {
+    color: Colors.primary,
   },
   planBtn: {
     marginLeft: 'auto',
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: Radius.sm,
+    backgroundColor: Colors.primaryGlow,
+    borderWidth: 1,
+    borderColor: Colors.primary + '40',
   },
   planBtnText: {
     fontSize: 11,
     fontFamily: Fonts.sansSemibold,
     color: Colors.primary,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
 
   emptyState: {
