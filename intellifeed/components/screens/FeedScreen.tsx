@@ -116,7 +116,10 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
             style={styles.cardHeroBg}
             resizeMode="cover"
           >
-            <View style={[styles.cardScrim, { backgroundColor: categoryStyle.gradientEnd + 'CC' }]} />
+            {/* subtle tint on top half */}
+            <View style={[styles.cardScrimTop, { backgroundColor: categoryStyle.gradientEnd + '22' }]} />
+            {/* stronger gradient on bottom half where text lives */}
+            <View style={[styles.cardScrimBottom, { backgroundColor: categoryStyle.gradientStart + 'DD' }]} />
             <View style={styles.cardOverlay}>
               <View style={styles.cardOverlayTop}>
                 <View style={styles.categoryPillOverlay}>
@@ -138,8 +141,9 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
             </View>
           </ImageBackground>
         ) : (
+          // No image — solid gradient fallback
           <View style={[styles.cardHeroBg, { backgroundColor: categoryStyle.gradientStart }]}>
-            <View style={[styles.cardScrim, { backgroundColor: categoryStyle.gradientEnd + 'AA' }]} />
+            <View style={[styles.cardScrimBottom, { backgroundColor: categoryStyle.gradientEnd + 'BB' }]} />
             <View style={styles.cardOverlay}>
               <View style={styles.cardOverlayTop}>
                 <View style={styles.categoryPillOverlay}>
@@ -866,11 +870,20 @@ const styles = StyleSheet.create({
   // Hero image / gradient area
   cardHeroBg: {
     width: '100%',
-    height: 160,
+    height: 185,
     justifyContent: 'flex-end',
   },
-  cardScrim: {
-    ...StyleSheet.absoluteFillObject,
+  // top half — very light tint so image is visible
+  cardScrimTop: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    height: '55%',
+  },
+  // bottom half — darker so text is readable
+  cardScrimBottom: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    height: '65%',
   },
   cardOverlay: {
     padding: Spacing.base,
