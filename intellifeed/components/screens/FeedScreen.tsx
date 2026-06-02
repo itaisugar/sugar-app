@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Image,
+  ImageBackground,
   TouchableOpacity,
   Pressable,
   SafeAreaView,
@@ -103,64 +104,63 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
 
   return (
     <View style={styles.card}>
-      {/* Tap area — title + thumbnail + meta */}
+      {/* Hero — image or gradient, with text overlay */}
       <Pressable
         onPress={openArticle}
-        android_ripple={{ color: Colors.surfaceBorder }}
-        style={({ pressed }) => [styles.cardPressable, pressed && { opacity: 0.9 }]}
+        android_ripple={{ color: 'rgba(0,0,0,0.15)' }}
+        style={({ pressed }) => [pressed && { opacity: 0.93 }]}
       >
-        {/* Top row: category pill + timestamp */}
-        <View style={styles.cardTopRow}>
-          <View style={[styles.categoryPill, { borderColor: categoryStyle.color + '40', backgroundColor: categoryStyle.background }]}>
-            <Text style={[styles.categoryGlyph, { color: categoryStyle.color }]}>{categoryStyle.glyph}</Text>
-            <Text style={[styles.categoryText, { color: categoryStyle.color }]}>{item.category}</Text>
-          </View>
-          <Text style={styles.timestampText}>{item.timestamp}</Text>
-        </View>
-
-        {/* Content row: text left, thumbnail right */}
-        <View style={styles.contentRow}>
-          <View style={styles.contentLeft}>
-            <Text style={[styles.cardTitle, rtlText]} numberOfLines={3}>
-              {displayTitle}
-            </Text>
-            {isTranslating ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={TextStyles.helper}>מתרגם…</Text>
+        {item.image ? (
+          <ImageBackground
+            source={{ uri: item.image }}
+            style={styles.cardHeroBg}
+            resizeMode="cover"
+          >
+            <View style={[styles.cardScrim, { backgroundColor: categoryStyle.gradientEnd + 'CC' }]} />
+            <View style={styles.cardOverlay}>
+              <View style={styles.cardOverlayTop}>
+                <View style={styles.categoryPillOverlay}>
+                  <Text style={styles.categoryGlyphOverlay}>{categoryStyle.glyph}</Text>
+                  <Text style={styles.categoryTextOverlay}>{item.category}</Text>
+                </View>
+                <Text style={styles.timestampOverlay}>{item.timestamp}</Text>
               </View>
-            ) : (
-              <Text style={[styles.cardHook, rtlText]} numberOfLines={2}>
-                {displayHook}
-              </Text>
-            )}
-          </View>
-          {item.image ? (
-            <Image source={{ uri: item.image }} style={styles.cardThumbnail} resizeMode="cover" />
-          ) : null}
-        </View>
-
-        {/* Source + read time + CTA */}
-        <View style={styles.sourceRow}>
-          <Text style={styles.sourceName}>{item.source}</Text>
-          <Text style={styles.readTimeDot}>·</Text>
-          <Text style={styles.readTime}>{item.readTime} min read</Text>
-          {item.contentUrl ? (
-            <View style={[
-              styles.readMorePill,
-              linkKind === 'spotify' && styles.spotifyPill,
-              linkKind === 'kindle' && styles.kindlePill,
-            ]}>
-              <Text style={[
-                styles.readMoreText,
-                linkKind === 'spotify' && styles.spotifyPillText,
-                linkKind === 'kindle' && styles.kindlePillText,
-              ]}>
-                {ctaLabelFor(linkKind)}
-              </Text>
+              <Text style={[styles.cardTitle, rtlText]} numberOfLines={3}>{displayTitle}</Text>
+              {isTranslating ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 }}>
+                  <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.cardHookOverlay}>מתרגם…</Text>
+                </View>
+              ) : (
+                <Text style={[styles.cardHookOverlay, rtlText]} numberOfLines={2}>{displayHook}</Text>
+              )}
+              <Text style={styles.sourceOverlay}>{item.source} · {item.readTime} min read</Text>
             </View>
-          ) : null}
-        </View>
+          </ImageBackground>
+        ) : (
+          <View style={[styles.cardHeroBg, { backgroundColor: categoryStyle.gradientStart }]}>
+            <View style={[styles.cardScrim, { backgroundColor: categoryStyle.gradientEnd + 'AA' }]} />
+            <View style={styles.cardOverlay}>
+              <View style={styles.cardOverlayTop}>
+                <View style={styles.categoryPillOverlay}>
+                  <Text style={styles.categoryGlyphOverlay}>{categoryStyle.glyph}</Text>
+                  <Text style={styles.categoryTextOverlay}>{item.category}</Text>
+                </View>
+                <Text style={styles.timestampOverlay}>{item.timestamp}</Text>
+              </View>
+              <Text style={[styles.cardTitle, rtlText]} numberOfLines={3}>{displayTitle}</Text>
+              {isTranslating ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 }}>
+                  <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.cardHookOverlay}>מתרגם…</Text>
+                </View>
+              ) : (
+                <Text style={[styles.cardHookOverlay, rtlText]} numberOfLines={2}>{displayHook}</Text>
+              )}
+              <Text style={styles.sourceOverlay}>{item.source} · {item.readTime} min read</Text>
+            </View>
+          </View>
+        )}
       </Pressable>
 
       {/* Audio player — slim strip */}
@@ -859,99 +859,81 @@ const styles = StyleSheet.create({
 
   // ─── Feed Card ───────────────────────────────────────────────────────────
   card: {
-    backgroundColor: Colors.background,
     borderRadius: Radius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    backgroundColor: Colors.background,
   },
-  cardPressable: {
+  // Hero image / gradient area
+  cardHeroBg: {
+    width: '100%',
+    height: 160,
+    justifyContent: 'flex-end',
+  },
+  cardScrim: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  cardOverlay: {
     padding: Spacing.base,
-    gap: 10,
+    gap: 5,
   },
-  // Top row: category + timestamp
-  cardTopRow: {
+  cardOverlayTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 4,
   },
-  categoryPill: {
+  categoryPillOverlay: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 8,
+    paddingHorizontal: 9,
     paddingVertical: 3,
     borderRadius: Radius.full,
-    borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
-  categoryGlyph: {
+  categoryGlyphOverlay: {
     fontSize: 11,
-    lineHeight: 13,
+    color: '#fff',
   },
-  categoryText: {
+  categoryTextOverlay: {
     fontSize: 10,
     fontFamily: Fonts.sansSemibold,
+    color: '#fff',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
-  timestampText: {
-    fontSize: 11,
+  timestampOverlay: {
+    fontSize: 10,
     fontFamily: Fonts.sans,
-    color: Colors.textFaint,
-  },
-  // Content: text left, thumbnail right
-  contentRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.md,
-  },
-  contentLeft: {
-    flex: 1,
-    gap: 5,
+    color: 'rgba(255,255,255,0.6)',
   },
   cardTitle: {
     fontFamily: Fonts.sansBold,
     fontSize: 16,
     lineHeight: 22,
     letterSpacing: -0.3,
-    color: Colors.textPrimary,
+    color: '#fff',
   },
+  cardHookOverlay: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    lineHeight: 17,
+    color: 'rgba(255,255,255,0.75)',
+  },
+  sourceOverlay: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.55)',
+    marginTop: 2,
+  },
+  // kept for legacy style references (unused in new layout but avoids TS errors)
   cardHook: {
     fontFamily: Fonts.sans,
     fontSize: 13,
     lineHeight: 19,
     color: Colors.textSecondary,
   },
-  cardThumbnail: {
-    width: 88,
-    height: 88,
-    borderRadius: Radius.md,
-    flexShrink: 0,
-    backgroundColor: Colors.surfaceMuted,
-  },
-  // Source row
-  sourceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    flexWrap: 'wrap',
-  },
-  sourceName: {
-    fontSize: 12,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textFaint,
-  },
-  readTimeDot: {
-    fontSize: 12,
-    color: Colors.textFaint,
-  },
-  readTime: {
-    fontSize: 12,
-    fontFamily: Fonts.sans,
-    color: Colors.textFaint,
-  },
   readMorePill: {
-    marginLeft: 'auto',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: Radius.full,
@@ -963,17 +945,10 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sansSemibold,
     fontSize: 10,
     color: Colors.textSecondary,
-    letterSpacing: 0.2,
   },
-  spotifyPill: {
-    backgroundColor: '#1DB95410',
-    borderColor: '#1DB95435',
-  },
+  spotifyPill: { backgroundColor: '#1DB95410', borderColor: '#1DB95435' },
   spotifyPillText: { color: '#0F8E3F' },
-  kindlePill: {
-    backgroundColor: '#C8782A10',
-    borderColor: '#C8782A35',
-  },
+  kindlePill: { backgroundColor: '#C8782A10', borderColor: '#C8782A35' },
   kindlePillText: { color: '#A0561B' },
 
   // ─── Audio strip ─────────────────────────────────────────────────────────
