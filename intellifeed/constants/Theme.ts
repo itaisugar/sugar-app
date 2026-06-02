@@ -1,58 +1,50 @@
 // ─── Theme ───────────────────────────────────────────────────────────────────
-// Color palette: the existing Modern Thinker tones (warm paper background,
-// terracotta accent, deep ink — unchanged).
-//
-// Typography: Inter is the primary family across the whole product.
-// Playfair Display is reserved for the brand mark (the "Sapience" logo) and
-// the occasional editorial hero — it is intentionally rare. The intent is a
-// clean, modern social/product feel (LinkedIn / Facebook readability), not an
-// editorial magazine.
+// Modern & clean palette — pure white surfaces, near-black text, crimson red
+// as the single bold accent. Typography stays Inter throughout.
 
 import type { TextStyle } from 'react-native';
 
 export const Colors = {
-  // Surfaces — clean white canvas with warm cream cards floating on it.
-  // The cards (surface) keep the Atelier warmth so the content blocks read
-  // as a different material from the page itself.
+  // Surfaces
   background: '#FFFFFF',
-  backgroundDeep: '#F8F5EE',
-  surface: '#F4EDE0',
-  surfaceElevated: '#FAF6EC',
-  surfaceMuted: '#EDE5D0',
-  surfaceBorder: 'rgba(45,36,24,0.10)',
-  surfaceBorderStrong: 'rgba(45,36,24,0.20)',
+  backgroundDeep: '#F7F7F8',
+  surface: '#F7F7F8',
+  surfaceElevated: '#FFFFFF',
+  surfaceMuted: '#EFEFEF',
+  surfaceBorder: 'rgba(0,0,0,0.07)',
+  surfaceBorderStrong: 'rgba(0,0,0,0.14)',
 
-  // Text
-  textPrimary: '#241C12',
-  textSecondary: '#3D3326',
-  textMuted: '#6B5D4C',
-  textFaint: '#A89070',
+  // Text — neutral, high contrast
+  textPrimary: '#111111',
+  textSecondary: '#444444',
+  textMuted: '#888888',
+  textFaint: '#BBBBBB',
 
-  // Primary — terracotta
-  primary: '#7C5234',
-  primaryDark: '#5E3E27',
-  primaryGlow: 'rgba(124,82,52,0.08)',
-  primaryGlowStrong: 'rgba(124,82,52,0.16)',
+  // Primary — crimson red
+  primary: '#D42B2B',
+  primaryDark: '#A81F1F',
+  primaryGlow: 'rgba(212,43,43,0.07)',
+  primaryGlowStrong: 'rgba(212,43,43,0.14)',
 
-  // Secondary accents
-  accentSage: '#4F6346',
-  accentOchre: '#8A6B2E',
-  accentBurgundy: '#A05A4E',
+  // Secondary accents (neutral)
+  accentSage: '#2D6A4F',
+  accentOchre: '#B45309',
+  accentBurgundy: '#9F1239',
 
   // Functional
-  success: '#4F6346',
-  warning: '#8A6B2E',
-  danger: '#A04638',
+  success: '#16A34A',
+  warning: '#D97706',
+  danger: '#D42B2B',
 
-  // Category tags — restrained earth tones
-  tagSport: '#A04638',
-  tagScience: '#4F6346',
-  tagAI: '#5C6A82',
-  tagPsych: '#4F6346',
-  tagHistory: '#8A6B2E',
-  tagBusiness: '#7C5234',
-  tagHealth: '#4F6346',
-  tagPhilosophy: '#8A6B2E',
+  // Category tags — clean, minimal tints
+  tagSport: '#DC2626',
+  tagScience: '#2563EB',
+  tagAI: '#7C3AED',
+  tagPsych: '#059669',
+  tagHistory: '#92400E',
+  tagBusiness: '#1D4ED8',
+  tagHealth: '#16A34A',
+  tagPhilosophy: '#6D28D9',
 
   white: '#FFFFFF',
   black: '#000000',

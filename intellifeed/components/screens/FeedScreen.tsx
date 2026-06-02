@@ -450,7 +450,7 @@ export default function FeedScreen() {
             {error}
           </Text>
           <TouchableOpacity style={styles.retryBtn} onPress={onRefresh}>
-            <Text style={TextStyles.buttonSecondary}>Try Again</Text>
+            <Text style={[TextStyles.buttonSecondary, { color: Colors.white }]}>Try Again</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -588,271 +588,208 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
+  // ─── Shell ───────────────────────────────────────────────────────────────
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.backgroundDeep, // very light gray — cards float on it
   },
+
+  // ─── Header ──────────────────────────────────────────────────────────────
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
+    paddingTop: Spacing.md,
     paddingBottom: Spacing.sm,
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceBorder,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  streakBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primary,
+  },
+  streakText: {
+    fontSize: 11,
+    fontFamily: Fonts.sansSemibold,
+    color: Colors.white,
+    letterSpacing: 0.2,
   },
   langIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9, paddingVertical: 5,
-    borderRadius: 999,
-    borderWidth: 0.5, borderColor: Colors.surfaceBorderStrong,
-    backgroundColor: Colors.surface,
+    gap: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.surfaceBorderStrong,
+    backgroundColor: Colors.background,
   },
   langIconActive: {
     borderColor: Colors.primary,
     backgroundColor: Colors.primaryGlow,
   },
   langGlyph: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.textSecondary,
-    lineHeight: 14,
+    lineHeight: 13,
   },
   langCode: {
     fontFamily: Fonts.sansSemibold,
     fontSize: 10,
-    letterSpacing: 0.6,
+    letterSpacing: 0.4,
     color: Colors.textSecondary,
   },
   langIconTextActive: { color: Colors.primary },
-  headerKicker: {
-    fontSize: 11,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.primary,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-    letterSpacing: -0.5,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  streakBadge: {
-    borderWidth: 1,
-    borderColor: Colors.primary + '40',
-    backgroundColor: Colors.primaryGlow,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: Radius.full,
-  },
-  streakText: {
-    fontSize: 11,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.primary,
-    letterSpacing: 0.5,
-  },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.primary,
   },
   avatarText: {
-    fontFamily: Fonts.serif,
-    fontSize: 18,
-    color: Colors.primary,
-  },
-  logoutBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchUsersBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 0.5,
-    borderColor: Colors.surfaceBorderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchUsersIcon: {
-    fontSize: 18,
-    color: Colors.textPrimary,
-  },
-  logoutIcon: {
-    fontSize: 16,
-    color: Colors.textSecondary,
     fontFamily: Fonts.sansBold,
+    fontSize: 14,
+    color: Colors.white,
   },
-  tagline: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.base,
-  },
-  languageRow: {
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.base,
-  },
-  languageToggle: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    backgroundColor: Colors.surface,
-  },
-  languageToggleActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryGlow,
-  },
-  languageToggleText: {
-    fontSize: 12,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textSecondary,
-    letterSpacing: 0.4,
-  },
-  languageToggleTextActive: {
-    color: Colors.primary,
-    fontFamily: Fonts.sansSemibold,
-  },
+
+  // ─── Search ──────────────────────────────────────────────────────────────
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    height: 44,
     backgroundColor: Colors.surface,
     marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.base,
-    borderRadius: Radius.md,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderRadius: Radius.full,
     paddingHorizontal: Spacing.base,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
-    gap: 10,
+    gap: 8,
   },
   searchIcon: {
-    fontSize: 18,
-    color: Colors.textMuted,
+    fontSize: 16,
+    color: Colors.textFaint,
   },
   searchInput: {
     flex: 1,
-    height: 46,
+    height: 44,
     color: Colors.textPrimary,
     fontFamily: Fonts.sans,
     fontSize: 14,
   },
   searchPlaceholder: {
     flex: 1,
-    fontFamily: Fonts.serifItalic,
+    fontFamily: Fonts.sans,
     fontSize: 14,
-    color: Colors.textMuted,
+    color: Colors.textFaint,
   },
+
+  // ─── Category chips ───────────────────────────────────────────────────────
   categoriesWrap: {
-    height: 48,
-    marginBottom: Spacing.base,
+    height: 44,
+    marginBottom: Spacing.sm,
   },
   categoryChip: {
-    height: 36,
-    paddingHorizontal: 18,
+    height: 32,
+    paddingHorizontal: 16,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: Radius.full,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    borderColor: Colors.surfaceBorderStrong,
   },
   categoryChipActive: {
-    backgroundColor: Colors.primaryGlow,
+    backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
   categoryChipText: {
     fontSize: 13,
     fontFamily: Fonts.sansMedium,
-    color: Colors.textPrimary,
-    letterSpacing: 0.5,
-    lineHeight: 16,
+    color: Colors.textSecondary,
   },
   categoryChipTextActive: {
-    color: Colors.primary,
+    color: Colors.white,
     fontFamily: Fonts.sansSemibold,
   },
 
-  // Briefing strip
+  // ─── Briefing strip ───────────────────────────────────────────────────────
   briefingStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: Colors.textPrimary,
+    backgroundColor: Colors.primary,
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.base,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   briefingPlayBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   briefingPlayIcon: {
-    fontSize: 10,
+    fontSize: 12,
     color: Colors.white,
     fontFamily: Fonts.sansBold,
   },
   briefingStripTitle: {
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 14,
-    color: Colors.surface,
-    letterSpacing: -0.1,
+    fontFamily: Fonts.sansBold,
+    fontSize: 15,
+    color: Colors.white,
+    letterSpacing: -0.2,
   },
   briefingStripSub: {
     fontFamily: Fonts.sans,
-    fontSize: 11,
-    color: Colors.textFaint,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.65)',
     marginTop: 2,
   },
   briefingStripArrow: {
-    fontSize: 20,
-    color: Colors.textFaint,
-    lineHeight: 22,
+    fontSize: 22,
+    color: 'rgba(255,255,255,0.5)',
+    lineHeight: 24,
   },
-  // Quote
+
+  // ─── Quote ───────────────────────────────────────────────────────────────
   quoteCard: {
     paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderLeftWidth: 2,
-    borderLeftColor: Colors.primary + '60',
-    gap: 6,
+    borderLeftColor: Colors.primary,
+    gap: 4,
   },
   quoteText: {
     fontFamily: Fonts.serifItalic,
     fontSize: 14,
-    lineHeight: 21,
+    lineHeight: 20,
     color: Colors.textSecondary,
   },
   quoteAuthor: {
     fontFamily: Fonts.sansMedium,
     fontSize: 11,
-    color: Colors.textMuted,
-    letterSpacing: 0.2,
+    color: Colors.textFaint,
   },
-  // Activity cards
+
+  // ─── Activity cards ───────────────────────────────────────────────────────
   activityCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.base,
     paddingTop: Spacing.md,
@@ -863,8 +800,8 @@ const styles = StyleSheet.create({
   activityCardLabel: {
     fontSize: 10,
     fontFamily: Fonts.sansSemibold,
-    color: Colors.primary,
-    letterSpacing: 1.2,
+    color: Colors.textFaint,
+    letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: Spacing.sm,
   },
@@ -879,7 +816,7 @@ const styles = StyleSheet.create({
   clubLabel: {
     fontFamily: Fonts.sansSemibold,
     fontSize: 10,
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
     color: Colors.primary,
     marginBottom: 3,
@@ -891,18 +828,24 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   followAvatar: {
-    width: 28, height: 28, borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: Colors.primaryGlow,
-    borderWidth: 1, borderColor: Colors.primary + '30',
-    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.primary + '25',
+    alignItems: 'center',
+    justifyContent: 'center',
     flexShrink: 0,
   },
   followAvatarText: {
-    fontFamily: Fonts.sansSemibold, fontSize: 12,
+    fontFamily: Fonts.sansBold,
+    fontSize: 12,
     color: Colors.primary,
   },
   followLine: {
-    fontFamily: Fonts.sans, fontSize: 12,
+    fontFamily: Fonts.sans,
+    fontSize: 12,
     lineHeight: 16,
     color: Colors.textSecondary,
   },
@@ -914,9 +857,9 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
 
-  // ─── Card ────────────────────────────────────────────────────────────────
+  // ─── Feed Card ───────────────────────────────────────────────────────────
   card: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderRadius: Radius.lg,
     overflow: 'hidden',
     borderWidth: 1,
@@ -924,9 +867,9 @@ const styles = StyleSheet.create({
   },
   cardPressable: {
     padding: Spacing.base,
-    gap: Spacing.md,
+    gap: 10,
   },
-  // Top row
+  // Top row: category + timestamp
   cardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -936,27 +879,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 9,
+    paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: Radius.full,
     borderWidth: 1,
   },
   categoryGlyph: {
-    fontSize: 12,
-    lineHeight: 14,
+    fontSize: 11,
+    lineHeight: 13,
   },
   categoryText: {
     fontSize: 10,
     fontFamily: Fonts.sansSemibold,
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   timestampText: {
     fontSize: 11,
     fontFamily: Fonts.sans,
-    color: Colors.textMuted,
+    color: Colors.textFaint,
   },
-  // Content row: text + thumbnail
+  // Content: text left, thumbnail right
   contentRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -964,13 +907,13 @@ const styles = StyleSheet.create({
   },
   contentLeft: {
     flex: 1,
-    gap: 6,
+    gap: 5,
   },
   cardTitle: {
-    fontFamily: Fonts.sansSemibold,
+    fontFamily: Fonts.sansBold,
     fontSize: 16,
     lineHeight: 22,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
     color: Colors.textPrimary,
   },
   cardHook: {
@@ -980,22 +923,23 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   cardThumbnail: {
-    width: 80,
-    height: 80,
+    width: 88,
+    height: 88,
     borderRadius: Radius.md,
     flexShrink: 0,
+    backgroundColor: Colors.surfaceMuted,
   },
   // Source row
   sourceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     flexWrap: 'wrap',
   },
   sourceName: {
     fontSize: 12,
     fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
+    color: Colors.textFaint,
   },
   readTimeDot: {
     fontSize: 12,
@@ -1004,34 +948,35 @@ const styles = StyleSheet.create({
   readTime: {
     fontSize: 12,
     fontFamily: Fonts.sans,
-    color: Colors.textMuted,
+    color: Colors.textFaint,
   },
   readMorePill: {
     marginLeft: 'auto',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    backgroundColor: Colors.surfaceMuted,
+    borderColor: Colors.surfaceBorderStrong,
+    backgroundColor: Colors.surface,
   },
   readMoreText: {
     fontFamily: Fonts.sansSemibold,
     fontSize: 10,
-    color: Colors.primary,
-    letterSpacing: 0.3,
+    color: Colors.textSecondary,
+    letterSpacing: 0.2,
   },
   spotifyPill: {
-    backgroundColor: '#1DB95412',
-    borderColor: '#1DB95440',
+    backgroundColor: '#1DB95410',
+    borderColor: '#1DB95435',
   },
   spotifyPillText: { color: '#0F8E3F' },
   kindlePill: {
-    backgroundColor: '#C8782A14',
-    borderColor: '#C8782A50',
+    backgroundColor: '#C8782A10',
+    borderColor: '#C8782A35',
   },
   kindlePillText: { color: '#A0561B' },
-  // Audio strip
+
+  // ─── Audio strip ─────────────────────────────────────────────────────────
   audioStrip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1040,16 +985,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: Colors.surfaceBorder,
+    backgroundColor: Colors.backgroundDeep,
   },
   audioStripActive: {
     backgroundColor: Colors.primaryGlow,
   },
   playBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: Colors.primary + '60',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.background,
@@ -1059,7 +1005,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   playIcon: {
-    fontSize: 10,
+    fontSize: 9,
     color: Colors.primary,
     fontFamily: Fonts.sansBold,
   },
@@ -1069,8 +1015,7 @@ const styles = StyleSheet.create({
   audioLabel: {
     fontSize: 11,
     fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    letterSpacing: 0.3,
+    color: Colors.textFaint,
   },
   progressBar: {
     height: 2,
@@ -1085,25 +1030,25 @@ const styles = StyleSheet.create({
   audioDuration: {
     fontSize: 10,
     fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    letterSpacing: 0.3,
+    color: Colors.textFaint,
   },
-  // Actions
+
+  // ─── Actions ─────────────────────────────────────────────────────────────
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
     borderTopWidth: 1,
     borderTopColor: Colors.surfaceBorder,
-    gap: 4,
+    gap: 2,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
     borderRadius: Radius.sm,
   },
   actionIcon: {
@@ -1125,18 +1070,17 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.primaryGlow,
-    borderWidth: 1,
-    borderColor: Colors.primary + '40',
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primary,
   },
   planBtnText: {
     fontSize: 11,
     fontFamily: Fonts.sansSemibold,
-    color: Colors.primary,
-    letterSpacing: 0.3,
+    color: Colors.white,
+    letterSpacing: 0.2,
   },
 
+  // ─── States ──────────────────────────────────────────────────────────────
   emptyState: {
     alignItems: 'center',
     paddingTop: 80,
@@ -1154,13 +1098,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: Colors.primary,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primary,
   },
   emptyTitle: {
     fontSize: 20,
-    fontFamily: Fonts.serif,
+    fontFamily: Fonts.sansBold,
     color: Colors.textPrimary,
   },
   emptyText: {
