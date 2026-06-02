@@ -21,6 +21,7 @@ import { isItemRead, markAsRead, unmarkAsRead } from '../../lib/reads';
 import { addLeaf, removeLeaf, getLeafBranch } from '../../lib/knowledge';
 import { useProfile } from '../../lib/ProfileContext';
 import { usePodcastPlayer } from '../../lib/PodcastPlayerContext';
+import { narrateItem } from '../../lib/narrate';
 import { useLanguage } from '../../lib/LanguageContext';
 import { getCategoryStyle } from '../../constants/Categories';
 
@@ -45,6 +46,8 @@ export default function ArticleReader() {
   // Feed cards use, so playback continues when navigating between screens
   // and only one piece can play at a time.
   const speaking = id ? player.isActive(id) && player.isPlaying : false;
+  const [audioBusy, setAudioBusy] = useState(false);
+  const [narrationUrl, setNarrationUrl] = useState<string | null>(null);
 
   // Knowledge state
   const [leafBranch, setLeafBranch] = useState<string | null>(null);
@@ -74,12 +77,26 @@ export default function ArticleReader() {
 
   // ── Audio summary ──────────────────────────────────────────────────────
   const playSummary = async () => {
-    if (!article || !id) return;
+    if (!article || !id || audioBusy) return;
+    // Generate a high-quality OpenAI TTS narration on demand (cached
+    // server-side) when the article doesn't already have an MP3.
+    let url = narrationUrl ?? article.audioUrl;
+    if (!url) {
+      setAudioBusy(true);
+      try {
+        url = await narrateItem(id);
+        setNarrationUrl(url);
+      } catch {
+        // Fall back to on-device narration below.
+      } finally {
+        setAudioBusy(false);
+      }
+    }
     await player.play({
       id,
       title: article.title,
       source: article.source,
-      audioUrl: article.audioUrl,
+      audioUrl: url,
       imageUrl: article.image,
       ttsText: `${article.title}. ${article.summary}`,
     });
@@ -290,19 +307,26 @@ export default function ArticleReader() {
           <Image source={{ uri: article.image }} style={styles.heroImage} resizeMode="cover" />
         ) : null}
 
-        {/* Audio summary — narrated via device TTS */}
+        {/* Audio summary — narrated via OpenAI TTS */}
         <TouchableOpacity
           style={[styles.audioCard, speaking && styles.audioCardActive]}
           onPress={speaking ? stopSummary : playSummary}
           activeOpacity={0.88}
+          disabled={audioBusy}
         >
           <View style={[styles.audioPlay, { backgroundColor: Colors.primary }]}>
-            <Text style={styles.audioPlayIcon}>{speaking ? '❚❚' : '▶'}</Text>
+            {audioBusy ? (
+              <ActivityIndicator size="small" color={Colors.white} />
+            ) : (
+              <Text style={styles.audioPlayIcon}>{speaking ? '❚❚' : '▶'}</Text>
+            )}
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.audioLabel}>{speaking ? 'Narrating' : 'Listen to summary'}</Text>
+            <Text style={styles.audioLabel}>
+              {audioBusy ? 'Generating audio…' : speaking ? 'Narrating' : 'Listen to summary'}
+            </Text>
             <Text style={styles.audioTitle}>
-              {speaking ? 'Tap to stop' : 'AI voice · ~1 min'}
+              {audioBusy ? 'Hang tight' : speaking ? 'Tap to stop' : 'AI voice · ~1 min'}
             </Text>
           </View>
           <Text style={styles.audioArrow}>{speaking ? '◼' : '◐'}</Text>

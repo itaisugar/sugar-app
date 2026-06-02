@@ -32,6 +32,7 @@ import { getDailyQuote } from '../../lib/quotes';
 import { CLUBS } from '../../constants/MockData';
 import { getCategoryStyle } from '../../constants/Categories';
 import { generateBriefing, type Briefing } from '../../lib/briefing';
+import { narrateItem } from '../../lib/narrate';
 
 const CATEGORIES = ['All', 'Science', 'AI', 'Philosophy', 'Performance', 'Geopolitics', 'Business'];
 
@@ -56,7 +57,9 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
   const rtlText = isHebrew && translation ? ({ writingDirection: 'rtl' as const, textAlign: 'right' as const }) : undefined;
   const isThisActive = player.isActive(item.id);
   const isThisPlaying = isThisActive && player.isPlaying;
-  const isThisLoading = isThisActive && player.isLoading;
+  const [narrating, setNarrating] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(item.audioUrl ?? null);
+  const isThisLoading = (isThisActive && player.isLoading) || narrating;
 
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '';
@@ -75,18 +78,34 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
   const onTogglePlay = async () => {
     if (isThisPlaying) {
       await player.pause();
-    } else if (isThisActive) {
-      await player.resume();
-    } else {
-      await player.play({
-        id: item.id,
-        title: item.title,
-        source: item.source,
-        audioUrl: item.audioUrl,
-        imageUrl: item.image,
-        ttsText: `${item.title}. ${item.summary}`,
-      });
+      return;
     }
+    if (isThisActive) {
+      await player.resume();
+      return;
+    }
+    // No MP3 yet → generate a high-quality OpenAI TTS narration on demand
+    // (cached server-side, so this only happens the first time per article).
+    let url = audioUrl;
+    if (!url) {
+      setNarrating(true);
+      try {
+        url = await narrateItem(item.id);
+        setAudioUrl(url);
+      } catch {
+        // Fall back to on-device narration below.
+      } finally {
+        setNarrating(false);
+      }
+    }
+    await player.play({
+      id: item.id,
+      title: item.title,
+      source: item.source,
+      audioUrl: url,
+      imageUrl: item.image,
+      ttsText: `${item.title}. ${item.summary}`,
+    });
   };
 
   const progressFraction =
@@ -184,13 +203,13 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
         </View>
 
         <View style={{ flex: 1 }}>
-          {item.audioUrl && isThisActive ? (
+          {audioUrl && isThisActive ? (
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${progressFraction * 100}%` }]} />
             </View>
           ) : (
             <Text style={styles.audioLabel}>
-              {isThisPlaying ? 'Now playing' : isThisActive ? 'Paused' : item.audioUrl ? 'Listen · Distilled Audio' : 'Listen · AI summary'}
+              {narrating ? 'Generating audio…' : isThisPlaying ? 'Now playing' : isThisActive ? 'Paused' : 'Listen · AI narration'}
             </Text>
           )}
         </View>
