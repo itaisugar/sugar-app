@@ -91,6 +91,12 @@ async function ask(system: string, memory: Msg[], maxTokens = 600): Promise<stri
     },
     body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: memory }),
   });
+  if (res.status === 429) {
+    // Respect the rate limit: wait and retry a few times.
+    const retryAfter = Number(res.headers.get("retry-after")) || 25;
+    await new Promise((r) => setTimeout(r, retryAfter * 1000));
+    return ask(system, memory, maxTokens);
+  }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(`Anthropic ${res.status}: ${detail.slice(0, 300)}`);
@@ -215,6 +221,7 @@ function buildReport(results: AgentResult[]): string {
 }
 
 // ── שמירה ל-DB ───────────────────────────────────────────────
+let lastSaveError: string | null = null;
 async function saveToDb(results: AgentResult[], report: string): Promise<string | null> {
   const avg = Number((results.reduce((s, r) => s + r.score, 0) / results.length).toFixed(1));
   const ret = results.filter((r) => r.wouldReturn).length;
@@ -224,7 +231,7 @@ async function saveToDb(results: AgentResult[], report: string): Promise<string 
     .insert({ avg_score: avg, would_return: ret, total_agents: results.length, report_text: report, raw_results: results })
     .select("id").single();
 
-  if (runErr || !run) { console.error("Failed to save run:", runErr); return null; }
+  if (runErr || !run) { console.error("Failed to save run:", runErr); lastSaveError = runErr?.message ?? "unknown"; return null; }
 
   const rows = results.map((r) => ({
     run_id: run.id,
@@ -251,11 +258,29 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const results = await Promise.all(PERSONAS.map(runAgent));
+    // Optional ?personas=N (or body { personas }) to keep within the Anthropic
+    // tier rate limit. Default: all. Agents run SEQUENTIALLY (not in parallel)
+    // so cumulative token throughput stays under the per-minute cap.
+    let count = PERSONAS.length;
+    try {
+      const url = new URL(req.url);
+      const qp = Number(url.searchParams.get("personas"));
+      if (qp) count = qp;
+      else if (req.method === "POST") {
+        const body = await req.json().catch(() => ({}));
+        if (body?.personas) count = Number(body.personas);
+      }
+    } catch { /* ignore */ }
+    const list = PERSONAS.slice(0, Math.max(1, Math.min(count, PERSONAS.length)));
+
+    const results: AgentResult[] = [];
+    for (const p of list) {
+      results.push(await runAgent(p));
+    }
     const report = buildReport(results);
     const runId = await saveToDb(results, report);
 
-    return new Response(JSON.stringify({ runId, report, results }), {
+    return new Response(JSON.stringify({ runId, saveError: lastSaveError, report, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

@@ -35,6 +35,11 @@ create table if not exists public.simulation_agents (
 create index if not exists simulation_agents_run_id_idx on public.simulation_agents (run_id);
 create index if not exists simulation_runs_created_at_idx on public.simulation_runs (created_at desc);
 
+-- The edge function writes with the service role — grant it table privileges.
+-- (Newly-created tables don't always inherit Supabase's default grants.)
+grant all on public.simulation_runs   to service_role;
+grant all on public.simulation_agents to service_role;
+
 -- RLS: lock down to admins only (the edge function uses the service role,
 -- which bypasses RLS, so inserts still work).
 alter table public.simulation_runs   enable row level security;
