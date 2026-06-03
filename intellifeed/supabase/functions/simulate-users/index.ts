@@ -262,16 +262,28 @@ Deno.serve(async (req) => {
     // tier rate limit. Default: all. Agents run SEQUENTIALLY (not in parallel)
     // so cumulative token throughput stays under the per-minute cap.
     let count = PERSONAS.length;
+    let only: string | null = null;
     try {
       const url = new URL(req.url);
+      only = url.searchParams.get("persona");
       const qp = Number(url.searchParams.get("personas"));
       if (qp) count = qp;
-      else if (req.method === "POST") {
+      if (req.method === "POST") {
         const body = await req.json().catch(() => ({}));
+        if (body?.persona) only = body.persona;
         if (body?.personas) count = Number(body.personas);
       }
     } catch { /* ignore */ }
-    const list = PERSONAS.slice(0, Math.max(1, Math.min(count, PERSONAS.length)));
+
+    // ?persona=Name → run just that one; otherwise first N (sequential).
+    const list = only
+      ? PERSONAS.filter((p) => p.name.toLowerCase() === only!.toLowerCase())
+      : PERSONAS.slice(0, Math.max(1, Math.min(count, PERSONAS.length)));
+    if (list.length === 0) {
+      return new Response(JSON.stringify({ error: `Unknown persona "${only}"` }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const results: AgentResult[] = [];
     for (const p of list) {
