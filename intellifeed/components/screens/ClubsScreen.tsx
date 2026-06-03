@@ -1,113 +1,187 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   SafeAreaView,
-  Image,
-  FlatList,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
-import { CLUBS, Club } from '../../constants/MockData';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../constants/Theme';
+import { CLUBS, Club, clubFaces, clubActiveNow, clubChallenge } from '../../constants/MockData';
+import { getCategoryStyle } from '../../constants/Categories';
 import { useProfile } from '../../lib/ProfileContext';
-import { fetchJoinedClubIds, joinClub } from '../../lib/clubs';
+import { fetchJoinedClubIds, joinClub, leaveClub, fetchJoinedClubsActivity } from '../../lib/clubs';
+import { Tappable, ZoomImage, CatTag, GoldBadge, MemberFaces, MemberMeter, LivePulse, EntranceView } from '../ui';
 
-const LEVEL_LABELS: Record<string, string> = {
-  beginner: 'Entry',
-  intermediate: 'Intermediate',
-  advanced: 'Advanced',
-  expert: 'Expert',
-};
+type Snippet = { who: string; body: string };
 
-function ClubCard({ club, score, onJoin }: { club: Club; score: number; onJoin: () => void }) {
-  const router = useRouter();
-  const canJoin = score >= club.requiredScore;
-  const openClub = () => router.push({ pathname: '/club/[id]', params: { id: club.id } });
+// Mock fallback discussion snippets, used when a club has no real comments yet.
+const MOCK_SNIPPETS: Snippet[] = [
+  { who: 'Elena V.', body: '"Chapter 4 reframed how I think about deliberate practice entirely."' },
+  { who: 'Marcus T.', body: '"Anyone else struck by the parallels to Kahneman here?"' },
+  { who: 'Priya N.', body: '"Started the protocol Monday — three days in and sleeping better already."' },
+  { who: 'James L.', body: '"The footnote on page 211 is worth the price of admission alone."' },
+];
 
+// ── Challenge progress strip ────────────────────────────────────────────────
+function ChallengeProgress({ club }: { club: Club }) {
+  const ch = clubChallenge(club);
+  if (!ch || !club.currentChallenge) return null;
+  const pct = Math.max(0.04, Math.min(1, ch.day / ch.total));
   return (
-    <TouchableOpacity activeOpacity={0.92} onPress={openClub} style={styles.clubCard}>
-      <View style={styles.imageWrap}>
-        <Image source={{ uri: club.image }} style={styles.clubImage} />
-        <View style={styles.imageOverlay} />
-        {club.isJoined && (
-          <View style={styles.joinedBadge}>
-            <Text style={styles.joinedBadgeText}>Member</Text>
+    <View style={styles.challengeBox}>
+      <View style={styles.challengeTop}>
+        <Text style={styles.challengeLabel}>THIS WEEK'S CHALLENGE</Text>
+        <Text style={styles.challengeDay}>Day {ch.day} / {ch.total}</Text>
+      </View>
+      <Text style={styles.challengeText} numberOfLines={2}>{club.currentChallenge}</Text>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${pct * 100}%` }]} />
+      </View>
+    </View>
+  );
+}
+
+// ── Join / Joined pill ──────────────────────────────────────────────────────
+function JoinButton({ joined, onPress, full = false }: { joined: boolean; onPress: () => void; full?: boolean }) {
+  return (
+    <Tappable onPress={onPress} style={[styles.joinBtn, full && styles.joinBtnFull, joined && styles.joinBtnJoined]}>
+      <Text style={[styles.joinIcon, joined && styles.joinTextJoined]}>{joined ? '✓' : '+'}</Text>
+      <Text style={[styles.joinText, joined && styles.joinTextJoined]}>{joined ? 'Joined' : 'Join'}</Text>
+    </Tappable>
+  );
+}
+
+function SectionLabel({ text }: { text: string }) {
+  return (
+    <View style={styles.sectionLabel}>
+      <Text style={styles.sectionLabelText}>{text}</Text>
+      <View style={styles.sectionRule} />
+    </View>
+  );
+}
+
+// ── Joined "membership" card ────────────────────────────────────────────────
+function JoinedClubCard({ club, snippet, onOpen, onToggle }: { club: Club; snippet: Snippet | null; onOpen: () => void; onToggle: () => void }) {
+  const faces = clubFaces(club);
+  return (
+    <Tappable onPress={onOpen} style={styles.membershipCard}>
+      <View style={styles.membershipTop}>
+        <ZoomImage source={{ uri: club.image }} style={styles.thumb} />
+        <View style={{ flex: 1, gap: 4 }}>
+          <View style={styles.membershipMetaRow}>
+            <CatTag category={club.category} onDark={false} small />
+            <LivePulse label={`${clubActiveNow(club)} active now`} />
           </View>
-        )}
+          <Text style={styles.clubName} numberOfLines={1}>{club.name}</Text>
+          <View style={styles.facesRow}>
+            <MemberFaces faces={faces} size={21} ring={Colors.surface} />
+            <Text style={styles.facesCount}>{club.members.toLocaleString()} members</Text>
+          </View>
+        </View>
       </View>
 
-      <View style={styles.clubBody}>
-        <View style={styles.clubMeta}>
-          <Text style={[styles.categoryText, { color: club.categoryColor }]}>
-            {club.category.toUpperCase()}
+      {snippet ? (
+        <View style={styles.snippetRow}>
+          <Text style={styles.snippetGlyph}>❝</Text>
+          <Text style={styles.snippetText} numberOfLines={2}>
+            <Text style={styles.snippetWho}>{snippet.who}</Text>{'  '}{snippet.body}
           </Text>
-          <Text style={styles.metaDot}>·</Text>
-          <Text style={styles.levelText}>{LEVEL_LABELS[club.level]}</Text>
         </View>
+      ) : null}
 
-        <Text style={TextStyles.cardTitle}>{club.name}</Text>
-        <Text style={styles.clubDesc}>{club.description}</Text>
+      <ChallengeProgress club={club} />
+    </Tappable>
+  );
+}
 
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statNumber}>{club.members.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Members</Text>
+// ── Spotlight (featured) discover card ──────────────────────────────────────
+function SpotlightClub({ club, joined, onOpen, onToggle }: { club: Club; joined: boolean; onOpen: () => void; onToggle: () => void }) {
+  const tint = getCategoryStyle(club.category).gradientEnd;
+  const faces = clubFaces(club);
+  return (
+    <Tappable onPress={onOpen} style={[styles.spotlightCard]}>
+      <ZoomImage source={{ uri: club.image }} style={styles.spotlightHero}>
+        <LinearGradient
+          pointerEvents="none"
+          colors={['rgba(8,7,9,0.12)', 'rgba(8,7,9,0.42)', tint + '2E', 'rgba(8,7,9,0.95)']}
+          locations={[0, 0.46, 0.72, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={styles.spotlightOverlay}>
+          <View style={styles.cardOverlayTop}>
+            <CatTag category={club.category} onDark />
+            <GoldBadge label="Featured" />
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}>
-            <Text style={styles.statNumber}>{club.weeklyActivity}%</Text>
-            <Text style={styles.statLabel}>Weekly Activity</Text>
-          </View>
-        </View>
-
-        {club.currentChallenge && (
-          <View style={styles.challengeBox}>
-            <Text style={styles.challengeLabel}>CURRENT BRIEF</Text>
-            <Text style={styles.challengeText}>{club.currentChallenge}</Text>
-          </View>
-        )}
-
-        <View style={styles.tagsRow}>
-          {club.tags.map(tag => (
-            <View key={tag} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
+          <View style={{ gap: 6 }}>
+            <Text style={styles.spotlightName} numberOfLines={2}>{club.name}</Text>
+            <Text style={styles.spotlightDesc} numberOfLines={1}>{club.description}</Text>
+            <View style={styles.spotlightFooter}>
+              <View style={styles.facesRow}>
+                <MemberFaces faces={faces} size={22} ring="rgba(8,7,9,0.9)" onDark />
+                <Text style={styles.facesCountOnDark}>{club.members.toLocaleString()} members</Text>
+              </View>
+              <JoinButton joined={joined} onPress={onToggle} />
             </View>
-          ))}
+          </View>
         </View>
+      </ZoomImage>
+    </Tappable>
+  );
+}
 
-        {!club.isJoined && (
-          <TouchableOpacity style={styles.joinBtn} onPress={onJoin}>
-            <Text style={styles.joinBtnText}>Join the Club</Text>
-          </TouchableOpacity>
-        )}
-
-        {club.isJoined && (
-          <TouchableOpacity style={styles.activeBtn} onPress={openClub}>
-            <Text style={styles.activeBtnText}>Enter Discourse</Text>
-          </TouchableOpacity>
-        )}
+// ── Discover club card ──────────────────────────────────────────────────────
+function DiscoverClubCard({ club, joined, onOpen, onToggle }: { club: Club; joined: boolean; onOpen: () => void; onToggle: () => void }) {
+  const tint = getCategoryStyle(club.category).gradientEnd;
+  const faces = clubFaces(club);
+  return (
+    <Tappable onPress={onOpen} style={styles.discoverCard}>
+      <ZoomImage source={{ uri: club.image }} style={styles.discoverHero}>
+        <LinearGradient
+          pointerEvents="none"
+          colors={['rgba(8,7,9,0.05)', tint + '22', 'rgba(8,7,9,0.92)']}
+          locations={[0, 0.5, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={styles.discoverHeroOverlay}>
+          <CatTag category={club.category} onDark />
+          <Text style={styles.discoverName} numberOfLines={1}>{club.name}</Text>
+        </View>
+      </ZoomImage>
+      <View style={styles.discoverBody}>
+        <Text style={styles.clubDesc} numberOfLines={2}>{club.description}</Text>
+        <View style={styles.discoverMetaRow}>
+          <View style={styles.facesRow}>
+            <MemberFaces faces={faces} size={20} ring={Colors.surface} />
+            <Text style={styles.facesCount}>{club.members.toLocaleString()}</Text>
+          </View>
+          <MemberMeter percent={club.weeklyActivity} />
+        </View>
+        <JoinButton joined={joined} onPress={onToggle} full />
       </View>
-    </TouchableOpacity>
+    </Tappable>
   );
 }
 
 export default function ClubsScreen() {
+  const router = useRouter();
   const { profile } = useProfile();
-  const score = profile?.total_score ?? 0;
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
-  const [activeFilter, setActiveFilter] = useState<'all' | 'joined' | 'available'>('all');
+  const [snippets, setSnippets] = useState<Record<string, Snippet>>({});
 
-  const refreshMembership = useCallback(async () => {
-    const ids = await fetchJoinedClubIds();
+  const refresh = useCallback(async () => {
+    const [ids, activity] = await Promise.all([fetchJoinedClubIds(), fetchJoinedClubsActivity(20)]);
     setJoinedIds(ids);
+    const map: Record<string, Snippet> = {};
+    for (const a of activity) {
+      if (!map[a.club_id]) map[a.club_id] = { who: a.author_name ?? 'A reader', body: a.body };
+    }
+    setSnippets(map);
   }, []);
 
-  useFocusEffect(useCallback(() => {
-    refreshMembership();
-  }, [refreshMembership]));
+  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
   const clubs: Club[] = CLUBS.map(c => ({
     ...c,
@@ -115,388 +189,197 @@ export default function ClubsScreen() {
     members: c.members + (joinedIds.has(c.id) && !c.isJoined ? 1 : 0),
   }));
 
-  const filtered = clubs.filter(c => {
-    if (activeFilter === 'joined') return c.isJoined;
-    if (activeFilter === 'available') return !c.isJoined && score >= c.requiredScore;
-    return true;
-  });
+  const joined = clubs.filter(c => c.isJoined);
+  const discover = clubs.filter(c => !c.isJoined);
 
-  const handleJoin = async (id: string) => {
-    try {
-      await joinClub(id);
-      setJoinedIds(prev => new Set(prev).add(id));
-    } catch (e) {
-      // swallow — UI will be unchanged
+  const snippetFor = (club: Club): Snippet | null => {
+    if (snippets[club.id]) return snippets[club.id];
+    // Stable mock fallback so joined cards feel alive.
+    const seed = club.id.charCodeAt(club.id.length - 1);
+    return MOCK_SNIPPETS[seed % MOCK_SNIPPETS.length];
+  };
+
+  const openClub = (id: string) => router.push({ pathname: '/club/[id]', params: { id } });
+
+  const toggleJoin = async (club: Club) => {
+    const next = new Set(joinedIds);
+    if (club.isJoined) {
+      next.delete(club.id);
+      setJoinedIds(next);
+      try { await leaveClub(club.id); } catch { /* revert on failure */ setJoinedIds(prev => new Set(prev).add(club.id)); }
+    } else {
+      next.add(club.id);
+      setJoinedIds(next);
+      try { await joinClub(club.id); } catch { setJoinedIds(prev => { const s = new Set(prev); s.delete(club.id); return s; }); }
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={TextStyles.kicker}>Curated Intelligence</Text>
-          <Text style={[TextStyles.screenTitle, { marginTop: 4 }]}>
-            Clubs<Text style={{ color: Colors.primary }}>.</Text>
-          </Text>
-          <Text style={[TextStyles.tagline, { marginTop: 6 }]}>Engage in high-level discourse.</Text>
-        </View>
-        <View style={styles.scoreBadge}>
-          <Text style={styles.scoreLabel}>SCORE</Text>
-          <Text style={styles.scoreText}>{score.toLocaleString()}</Text>
-        </View>
-      </View>
-
-      <View style={styles.filterRow}>
-        {[
-          { key: 'all', label: 'All Clubs' },
-          { key: 'joined', label: 'Mine' },
-        ].map(f => (
-          <TouchableOpacity
-            key={f.key}
-            style={[styles.filterTab, activeFilter === f.key && styles.filterTabActive]}
-            onPress={() => setActiveFilter(f.key as any)}
-          >
-            <Text style={[styles.filterTabText, activeFilter === f.key && styles.filterTabTextActive]}>
-              {f.label}
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <EntranceView>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={TextStyles.overline}>COMMUNITIES OF PRACTICE</Text>
+            <Text style={[TextStyles.screenTitle, { marginTop: 6 }]}>
+              Clubs<Text style={{ color: Colors.primary }}>.</Text>
             </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <FlatList
-        data={filtered}
-        keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 120, gap: 20 }}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <ClubCard club={item} score={score} onJoin={() => handleJoin(item.id)} />
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={TextStyles.emptyTitle}>No clubs available</Text>
-            <Text style={[TextStyles.emptyDescription, { textAlign: 'center', paddingHorizontal: Spacing.xl }]}>
-              Continue building your score to unlock further circles.
-            </Text>
+            <Text style={styles.subtitle}>Read alongside people who push you.</Text>
           </View>
-        }
-      />
+
+          {joined.length > 0 ? (
+            <>
+              <SectionLabel text={`Your Clubs · ${joined.length}`} />
+              <View style={{ gap: 16 }}>
+                {joined.map(c => (
+                  <JoinedClubCard
+                    key={c.id}
+                    club={c}
+                    snippet={snippetFor(c)}
+                    onOpen={() => openClub(c.id)}
+                    onToggle={() => toggleJoin(c)}
+                  />
+                ))}
+              </View>
+            </>
+          ) : null}
+
+          {discover.length > 0 ? (
+            <>
+              <SectionLabel text="Discover" />
+              <View style={{ gap: 16 }}>
+                {discover.map((c, i) =>
+                  i === 0 ? (
+                    <SpotlightClub key={c.id} club={c} joined={c.isJoined} onOpen={() => openClub(c.id)} onToggle={() => toggleJoin(c)} />
+                  ) : (
+                    <DiscoverClubCard key={c.id} club={c} joined={c.isJoined} onOpen={() => openClub(c.id)} onToggle={() => toggleJoin(c)} />
+                  ),
+                )}
+              </View>
+            </>
+          ) : null}
+        </EntranceView>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.base,
-  },
-  kicker: {
-    fontSize: 11,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.primary,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  headerTitle: {
-    fontSize: 36,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontFamily: Fonts.serifItalic,
+  scroll: { padding: Spacing.lg, paddingBottom: 120, gap: 18 },
+
+  // Header
+  header: { paddingTop: Spacing.sm },
+  subtitle: {
+    fontFamily: Fonts.sans,
     fontSize: 14,
     color: Colors.textSecondary,
-    marginTop: 4,
-  },
-  scoreBadge: {
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: Radius.sm,
-  },
-  scoreLabel: {
-    fontSize: 9,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.primary,
-    letterSpacing: 2,
-  },
-  scoreText: {
-    fontSize: 18,
-    fontFamily: Fonts.serif,
-    color: Colors.primary,
-    marginTop: 2,
-  },
-  myClubsCard: {
-    backgroundColor: Colors.surface,
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.base,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-  },
-  myClubsTitle: {
-    fontSize: 10,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.primary,
-    letterSpacing: 2,
-  },
-  myClubChip: {
-    backgroundColor: Colors.background,
-    borderRadius: Radius.sm,
-    padding: Spacing.base,
-    gap: 8,
-    width: 150,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-  },
-  myClubName: {
-    fontSize: 12,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-    lineHeight: 16,
-  },
-  activityBar: {
-    height: 2,
-    backgroundColor: Colors.surfaceBorder,
-    borderRadius: 1,
-    overflow: 'hidden',
-  },
-  activityFill: {
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: Colors.primary,
-  },
-  activityLabel: {
-    fontSize: 10,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    letterSpacing: 0.5,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.base,
-    gap: 8,
-  },
-  filterTab: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    alignItems: 'center',
-  },
-  filterTabActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryGlow,
-  },
-  filterTabText: {
-    fontSize: 11,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textSecondary,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  filterTabTextActive: {
-    color: Colors.primary,
-    fontFamily: Fonts.sansSemibold,
+    marginTop: 6,
   },
 
-  clubCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-  },
-  imageWrap: { position: 'relative' },
-  clubImage: {
-    width: '100%',
-    height: 160,
-  },
-  imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: Colors.background + 'AA',
-  },
-  joinedBadge: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    backgroundColor: Colors.background + 'EE',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-  },
-  joinedBadgeText: {
-    color: Colors.primary,
-    fontSize: 10,
-    fontFamily: Fonts.sansSemibold,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  clubBody: {
-    padding: Spacing.lg,
-    gap: 12,
-  },
-  clubMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  categoryText: {
-    fontSize: 10,
-    fontFamily: Fonts.sansSemibold,
-    letterSpacing: 2,
-  },
-  metaDot: { color: Colors.textMuted, fontSize: 12 },
-  levelText: {
-    fontSize: 10,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  clubName: {
-    fontSize: 22,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-    letterSpacing: -0.3,
-    lineHeight: 28,
-  },
-  clubDesc: {
-    fontSize: 14,
-    fontFamily: Fonts.sans,
-    color: Colors.textSecondary,
-    lineHeight: 22,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: Colors.background,
-    borderRadius: Radius.sm,
-    paddingVertical: Spacing.base,
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-  },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statNumber: {
+  // Section labels
+  sectionLabel: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
+  sectionLabelText: {
+    fontFamily: Fonts.display,
     fontSize: 16,
-    fontFamily: Fonts.serif,
-    color: Colors.primary,
+    letterSpacing: -0.2,
+    color: Colors.textPrimary,
   },
-  statLabel: {
-    fontSize: 9,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    marginTop: 4,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  statDivider: { width: 1, backgroundColor: Colors.surfaceBorder },
-  challengeBox: {
-    backgroundColor: Colors.background,
-    borderRadius: Radius.sm,
+  sectionRule: { flex: 1, height: 1, backgroundColor: Colors.border },
+
+  // ── Membership (joined) card ──
+  membershipCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.card,
     padding: Spacing.base,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 14,
+    ...Shadow.sm,
+  },
+  membershipTop: { flexDirection: 'row', gap: 14 },
+  membershipMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  thumb: { width: 60, height: 60, borderRadius: Radius.lg },
+  clubName: {
+    fontFamily: Fonts.display,
+    fontSize: 18,
+    letterSpacing: -0.2,
+    color: Colors.textPrimary,
+    marginTop: 1,
+  },
+  facesRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  facesCount: { fontFamily: Fonts.sansMedium, fontSize: 12, color: Colors.textMuted },
+  facesCountOnDark: { fontFamily: Fonts.sansMedium, fontSize: 12, color: 'rgba(255,255,255,0.8)' },
+
+  // Discussion snippet
+  snippetRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  snippetGlyph: { fontSize: 14, color: Colors.textFaint, lineHeight: 18 },
+  snippetText: { flex: 1, fontFamily: Fonts.sans, fontSize: 12.5, lineHeight: 18, color: Colors.textMuted },
+  snippetWho: { fontFamily: Fonts.sansSemibold, color: Colors.textSecondary },
+
+  // Challenge
+  challengeBox: {
+    backgroundColor: Colors.primarySoft,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
     borderLeftWidth: 2,
     borderLeftColor: Colors.primary,
-  },
-  challengeLabel: {
-    fontSize: 9,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.primary,
-    letterSpacing: 2,
-    marginBottom: 6,
-  },
-  challengeText: {
-    fontSize: 13,
-    fontFamily: Fonts.serifItalic,
-    color: Colors.textPrimary,
-    lineHeight: 20,
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  tag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-  },
-  tagText: {
-    fontSize: 10,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textSecondary,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  joinBtn: {
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryGlow,
-    borderRadius: Radius.sm,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  joinBtnDisabled: {
-    backgroundColor: Colors.transparent,
-    borderColor: Colors.surfaceBorder,
-  },
-  joinBtnText: {
-    color: Colors.primary,
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 12,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  joinBtnTextDisabled: {
-    color: Colors.textMuted,
-  },
-  activeBtn: {
-    borderRadius: Radius.sm,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    marginTop: 4,
-  },
-  activeBtnText: {
-    color: Colors.primary,
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 12,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingTop: 80,
+    borderColor: Colors.hairlineGold,
     gap: 8,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
+  challengeTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  challengeLabel: { fontFamily: Fonts.sansSemibold, fontSize: 9.5, letterSpacing: 1.4, color: Colors.textSecondary },
+  challengeDay: { fontFamily: Fonts.mono, fontSize: 11, color: Colors.primary },
+  challengeText: { fontFamily: Fonts.sans, fontSize: 12.5, lineHeight: 18, color: Colors.textPrimary },
+  progressTrack: { height: 4, borderRadius: 2, backgroundColor: 'rgba(244,241,236,0.1)', overflow: 'hidden' },
+  progressFill: { height: 4, borderRadius: 2, backgroundColor: Colors.primary },
+
+  // ── Spotlight ──
+  spotlightCard: {
+    borderRadius: Radius.card,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.hairlineGold,
+    ...Shadow.glow,
   },
-  emptyText: {
-    fontSize: 13,
-    fontFamily: Fonts.sans,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    paddingHorizontal: Spacing.xl,
+  spotlightHero: { width: '100%', height: 196 },
+  spotlightOverlay: { ...StyleSheet.absoluteFillObject, padding: Spacing.base, justifyContent: 'space-between' },
+  cardOverlayTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  spotlightName: { fontFamily: Fonts.display, fontSize: 23, lineHeight: 27, letterSpacing: -0.3, color: '#fff' },
+  spotlightDesc: { fontFamily: Fonts.sans, fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+  spotlightFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
+
+  // ── Discover card ──
+  discoverCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.card,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadow.sm,
   },
+  discoverHero: { width: '100%', height: 118 },
+  discoverHeroOverlay: { ...StyleSheet.absoluteFillObject, padding: Spacing.md, justifyContent: 'space-between', alignItems: 'flex-start' },
+  discoverName: { fontFamily: Fonts.display, fontSize: 18, letterSpacing: -0.2, color: '#fff' },
+  discoverBody: { padding: Spacing.base, gap: 12 },
+  clubDesc: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19, color: Colors.textSecondary },
+  discoverMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+
+  // ── Join button ──
+  joinBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primary,
+  },
+  joinBtnFull: { paddingVertical: 12, alignSelf: 'stretch' },
+  joinBtnJoined: { backgroundColor: Colors.transparent, borderWidth: 1, borderColor: Colors.borderStrong },
+  joinIcon: { fontFamily: Fonts.sansBold, fontSize: 13, color: Colors.onPrimary, lineHeight: 16 },
+  joinText: { fontFamily: Fonts.sansSemibold, fontSize: 13, color: Colors.onPrimary },
+  joinTextJoined: { color: Colors.textSecondary },
 });

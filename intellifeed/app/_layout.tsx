@@ -10,10 +10,17 @@ import {
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import {
-  useFonts as usePlayfair,
-  PlayfairDisplay_700Bold,
-  PlayfairDisplay_400Regular_Italic,
-} from '@expo-google-fonts/playfair-display';
+  useFonts as useSpaceGrotesk,
+  SpaceGrotesk_400Regular,
+  SpaceGrotesk_500Medium,
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+} from '@expo-google-fonts/space-grotesk';
+import {
+  useFonts as useSpaceMono,
+  SpaceMono_400Regular,
+  SpaceMono_700Bold,
+} from '@expo-google-fonts/space-mono';
 import { Colors } from '../constants/Theme';
 import { AuthProvider, useAuth } from '../lib/AuthContext';
 import { ProfileProvider, useProfile } from '../lib/ProfileContext';
@@ -76,12 +83,18 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
-  const [playfairLoaded] = usePlayfair({
-    PlayfairDisplay_700Bold,
-    PlayfairDisplay_400Regular_Italic,
+  const [groteskLoaded] = useSpaceGrotesk({
+    SpaceGrotesk_400Regular,
+    SpaceGrotesk_500Medium,
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
+  });
+  const [monoLoaded] = useSpaceMono({
+    SpaceMono_400Regular,
+    SpaceMono_700Bold,
   });
 
-  if (!interLoaded || !playfairLoaded) {
+  if (!interLoaded || !groteskLoaded || !monoLoaded) {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator color={Colors.primary} />
@@ -95,7 +108,7 @@ export default function RootLayout() {
        <LanguageProvider>
         <PodcastPlayerProvider>
           <View style={{ flex: 1, backgroundColor: Colors.background }}>
-            <StatusBar style="dark" />
+            <StatusBar style="light" />
             <AuthGate>
               <Stack
                 screenOptions={{

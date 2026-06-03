@@ -60,6 +60,11 @@ export interface Club {
   currentChallenge?: string;
   weeklyActivity: number;
   tags: string[];
+  // ── Noir redesign additions (derived at runtime — see helpers below) ──
+  faces?: string[];
+  activeNow?: number;
+  challengeDay?: number;
+  challengeTotal?: number;
 }
 
 export interface KnowledgeNode {
@@ -610,3 +615,77 @@ export const USER_PROFILE: UserProfile = {
     },
   ],
 };
+
+// ─── Noir derived data helpers ───────────────────────────────────────────────
+// The redesign needs a few presentational fields the DB doesn't carry. We derive
+// them deterministically (stable per id/name) so they look real and never jump.
+
+function seedFrom(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+const READER_NAMES = [
+  'Daniel R.', 'Sofia K.', 'Michael A.', 'Elena V.', 'Marcus T.', 'Priya N.',
+  'James L.', 'Nadia S.', 'Omar H.', 'Clara B.', 'Theo P.', 'Yara M.',
+];
+
+// Initials pile for a club's member faces (4 stable pseudo-members).
+export function clubFaces(club: Club): string[] {
+  if (club.faces?.length) return club.faces;
+  const pool = 'MDSAEJTNROCYPLKVH';
+  const seed = seedFrom(club.id + club.name);
+  return Array.from({ length: 4 }, (_, i) => pool[(seed >> (i * 3)) % pool.length]);
+}
+
+// "N active now" — stable, scaled loosely to membership.
+export function clubActiveNow(club: Club): number {
+  if (typeof club.activeNow === 'number') return club.activeNow;
+  return (seedFrom(club.id) % 34) + 6;
+}
+
+const WORD_NUMBERS: Record<string, number> = {
+  seven: 7, ten: 10, fourteen: 14, twenty: 20, thirty: 30, sixty: 60, ninety: 90,
+};
+
+// Parse a challenge length from the prose ("Thirty-day…", "30-day…") else a week.
+export function clubChallenge(club: Club): { day: number; total: number } | null {
+  if (!club.currentChallenge) return null;
+  if (club.challengeDay && club.challengeTotal) {
+    return { day: club.challengeDay, total: club.challengeTotal };
+  }
+  const text = club.currentChallenge.toLowerCase();
+  let total = 7;
+  const digit = text.match(/(\d+)[-\s]?day/);
+  if (digit) total = parseInt(digit[1], 10);
+  else {
+    for (const [word, n] of Object.entries(WORD_NUMBERS)) {
+      if (text.includes(`${word}-day`) || text.includes(`${word} day`)) { total = n; break; }
+    }
+  }
+  const day = (seedFrom(club.id + 'day') % total) + 1;
+  return { day: Math.min(day, total), total };
+}
+
+// Social-proof reader initials for a feed item — used when the item has no real
+// `friendsWhoRead`, so the social-proof treatment still appears on some cards.
+export function deriveReaders(seed: string, count = 3): string[] {
+  const s = seedFrom(seed);
+  const picked: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const name = READER_NAMES[(s + i * 7) % READER_NAMES.length];
+    if (!picked.includes(name)) picked.push(name);
+  }
+  return picked;
+}
+
+// Show social proof on ~40% of items (stable), so the feed feels populated
+// without claiming every piece has readers you follow. Accepts any item with
+// an id (works for both the mock and live `FeedItem` shapes).
+export function feedItemReaders(item: { id: string; friendsWhoRead?: string[] }): string[] {
+  if (item.friendsWhoRead?.length) return item.friendsWhoRead;
+  const s = seedFrom(item.id);
+  if (s % 5 < 2) return deriveReaders(item.id, (s % 2) + 2);
+  return [];
+}

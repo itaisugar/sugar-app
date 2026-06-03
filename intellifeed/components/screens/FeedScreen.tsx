@@ -16,7 +16,9 @@ import {
   Alert,
   Linking,
 } from 'react-native';
-import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../constants/Theme';
+import { Tappable, ZoomImage, Equalizer, CatTag, GoldBadge, MemberFaces, EntranceView } from '../ui';
 import { detectLinkKind, ctaLabelFor } from '../../lib/externalLinks';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../lib/AuthContext';
@@ -29,12 +31,12 @@ import { fetchJoinedClubsActivity, ClubActivity } from '../../lib/clubs';
 import { fetchFollowedActivity, activityVerb, FollowActivity } from '../../lib/social';
 import { touchDayStreak } from '../../lib/streak';
 import { getDailyQuote } from '../../lib/quotes';
-import { CLUBS } from '../../constants/MockData';
+import { CLUBS, feedItemReaders } from '../../constants/MockData';
 import { getCategoryStyle } from '../../constants/Categories';
 import { generateBriefing, type Briefing } from '../../lib/briefing';
 import { narrateItem } from '../../lib/narrate';
 
-const CATEGORIES = ['All', 'Science', 'AI', 'Philosophy', 'Performance', 'Geopolitics', 'Business'];
+const CATEGORIES = ['For You', 'Science', 'AI', 'Philosophy', 'Performance', 'Geopolitics', 'Business'];
 
 const SOURCE_LABELS: Record<string, string> = {
   curated: "From the Editor's Desk",
@@ -42,7 +44,7 @@ const SOURCE_LABELS: Record<string, string> = {
   community: 'Notable in the Community',
 };
 
-function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void; onLike: () => void }) {
+function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSave: () => void; onLike: () => void; lead?: boolean }) {
   const router = useRouter();
   const player = usePodcastPlayer();
   const { language, getTranslation, pending } = useLanguage();
@@ -120,71 +122,62 @@ function FeedCard({ item, onSave, onLike }: { item: FeedItem; onSave: () => void
   };
 
   const categoryStyle = getCategoryStyle(item.category);
+  const tint = categoryStyle.gradientEnd;
+  const isTrending = (item.trendingScore ?? 0) >= 90;
+  const readers = feedItemReaders(item);
+
+  const HeroOverlay = (
+    <>
+      {/* multi-stop scrim with a wash of the category tint */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={['rgba(8,7,9,0.12)', 'rgba(8,7,9,0.40)', tint + '2E', 'rgba(8,7,9,0.94)']}
+        locations={[0, 0.48, 0.72, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={styles.heroOverlay}>
+        <View style={styles.cardOverlayTop}>
+          <CatTag category={item.category} onDark />
+          {isTrending ? <GoldBadge label="Trending" /> : <Text style={styles.timestampOverlay}>{item.timestamp}</Text>}
+        </View>
+        <View>
+          <Text style={[lead ? styles.cardTitleLead : styles.cardTitle, rtlText]} numberOfLines={lead ? 3 : 3}>{displayTitle}</Text>
+          {isTranslating ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 }}>
+              <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" />
+              <Text style={styles.cardHookOverlay}>מתרגם…</Text>
+            </View>
+          ) : (
+            <Text style={[styles.cardHookOverlay, rtlText]} numberOfLines={2}>{displayHook}</Text>
+          )}
+          <View style={styles.heroMetaRow}>
+            <Text style={styles.sourceOverlay} numberOfLines={1}>{item.source} · {item.readTime} min read</Text>
+            {readers.length > 0 ? (
+              <View style={styles.socialProof}>
+                <MemberFaces faces={readers.map(r => r.charAt(0).toUpperCase())} size={20} ring="rgba(8,7,9,0.9)" onDark />
+                <Text style={styles.socialText}>{readers.length} you follow</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </View>
+    </>
+  );
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, lead && styles.cardLead]}>
       {/* Hero — image or gradient, with text overlay */}
-      <Pressable
-        onPress={openArticle}
-        android_ripple={{ color: 'rgba(0,0,0,0.15)' }}
-        style={({ pressed }) => [pressed && { opacity: 0.93 }]}
-      >
+      <Tappable onPress={openArticle}>
         {item.image ? (
-          <ImageBackground
-            source={{ uri: item.image }}
-            style={styles.cardHeroBg}
-            resizeMode="cover"
-          >
-            {/* subtle tint on top portion */}
-            <View style={[styles.cardScrimTop, { backgroundColor: categoryStyle.gradientEnd + '30' }]} />
-            {/* strong dark scrim on bottom — ensures text is always readable */}
-            <View style={[styles.cardScrimBottom, { backgroundColor: categoryStyle.gradientStart + 'F0' }]} />
-            <View style={styles.cardOverlay}>
-              <View style={styles.cardOverlayTop}>
-                <View style={styles.categoryPillOverlay}>
-                  <Text style={styles.categoryGlyphOverlay}>{categoryStyle.glyph}</Text>
-                  <Text style={styles.categoryTextOverlay}>{item.category}</Text>
-                </View>
-                <Text style={styles.timestampOverlay}>{item.timestamp}</Text>
-              </View>
-              <Text style={[styles.cardTitle, rtlText]} numberOfLines={3}>{displayTitle}</Text>
-              {isTranslating ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 }}>
-                  <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" />
-                  <Text style={styles.cardHookOverlay}>מתרגם…</Text>
-                </View>
-              ) : (
-                <Text style={[styles.cardHookOverlay, rtlText]} numberOfLines={2}>{displayHook}</Text>
-              )}
-              <Text style={styles.sourceOverlay}>{item.source} · {item.readTime} min read</Text>
-            </View>
-          </ImageBackground>
+          <ZoomImage source={{ uri: item.image }} style={[styles.cardHeroBg, lead && styles.cardHeroBgLead]}>
+            {HeroOverlay}
+          </ZoomImage>
         ) : (
-          // No image — solid gradient fallback
-          <View style={[styles.cardHeroBg, { backgroundColor: categoryStyle.gradientStart }]}>
-            <View style={[styles.cardScrimBottom, { backgroundColor: categoryStyle.gradientEnd + 'BB' }]} />
-            <View style={styles.cardOverlay}>
-              <View style={styles.cardOverlayTop}>
-                <View style={styles.categoryPillOverlay}>
-                  <Text style={styles.categoryGlyphOverlay}>{categoryStyle.glyph}</Text>
-                  <Text style={styles.categoryTextOverlay}>{item.category}</Text>
-                </View>
-                <Text style={styles.timestampOverlay}>{item.timestamp}</Text>
-              </View>
-              <Text style={[styles.cardTitle, rtlText]} numberOfLines={3}>{displayTitle}</Text>
-              {isTranslating ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 }}>
-                  <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" />
-                  <Text style={styles.cardHookOverlay}>מתרגם…</Text>
-                </View>
-              ) : (
-                <Text style={[styles.cardHookOverlay, rtlText]} numberOfLines={2}>{displayHook}</Text>
-              )}
-              <Text style={styles.sourceOverlay}>{item.source} · {item.readTime} min read</Text>
-            </View>
+          <View style={[styles.cardHeroBg, lead && styles.cardHeroBgLead, { backgroundColor: categoryStyle.gradientStart }]}>
+            {HeroOverlay}
           </View>
         )}
-      </Pressable>
+      </Tappable>
 
       {/* Audio player — slim strip */}
       <TouchableOpacity
@@ -258,7 +251,7 @@ export default function FeedScreen() {
   const { user, signOut } = useAuth();
   const { profile, refresh: refreshProfile } = useProfile();
   const { language, toggle: toggleLanguage, ensureTranslations } = useLanguage();
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState('For You');
   const [searchQuery, setSearchQuery] = useState('');
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -361,7 +354,7 @@ export default function FeedScreen() {
 
   const filteredItems = items.filter(item => {
     let matchesCategory: boolean;
-    if (selectedCategory === 'All') {
+    if (selectedCategory === 'For You') {
       matchesCategory = hasInterests
         ? lowerInterests.some(i =>
             item.category.toLowerCase().includes(i) ||
@@ -508,42 +501,59 @@ export default function FeedScreen() {
           }
           ListHeaderComponent={
             <View style={{ gap: 16, marginBottom: 4 }}>
-              {/* Briefing strip */}
+              {/* Today's Briefing — gradient banner */}
               {items.length >= 1 ? (
                 <View>
                   <TouchableOpacity
                     onPress={onGenerateBriefing}
                     disabled={briefingBusy}
-                    activeOpacity={0.85}
-                    style={[styles.briefingStrip, briefingBusy && { opacity: 0.7 }]}
+                    activeOpacity={0.9}
+                    style={[styles.briefingShadow, briefingBusy && { opacity: 0.85 }]}
                   >
-                    <View style={styles.briefingPlayBtn}>
-                      {briefingBusy
-                        ? <ActivityIndicator size="small" color={Colors.white} />
-                        : <Text style={styles.briefingPlayIcon}>{briefingPlaying ? '❚❚' : '▶'}</Text>}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.briefingStripTitle} numberOfLines={1}>
-                        {briefingActive ? briefing!.title : "Today's Briefing"}
-                      </Text>
-                      <Text style={styles.briefingStripSub}>
+                    <LinearGradient
+                      colors={[Colors.primaryDark, Colors.primary, Colors.primaryDark]}
+                      locations={[0, 0.58, 1]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.briefingStrip}
+                    >
+                      {/* top-left white sheen */}
+                      <View style={styles.briefingSheen} pointerEvents="none" />
+                      <View style={styles.briefingPlayBtn}>
                         {briefingBusy
-                          ? 'Preparing your briefing…'
-                          : briefingActive
-                            ? (briefingPlaying ? 'Now playing · tap to pause' : 'Paused · tap to resume')
-                            : 'Three pieces · narrated'}
-                      </Text>
-                    </View>
-                    {briefing ? (
-                      <TouchableOpacity
-                        onPress={() => setShowScript(s => !s)}
-                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                      >
-                        <Text style={styles.briefingStripArrow}>{showScript ? '⌄' : '›'}</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={styles.briefingStripArrow}>›</Text>
-                    )}
+                          ? <ActivityIndicator size="small" color={Colors.white} />
+                          : <Text style={styles.briefingPlayIcon}>{briefingPlaying ? '❚❚' : '▶'}</Text>}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Text style={styles.briefingStripTitle} numberOfLines={1}>
+                            {briefingActive ? briefing!.title : "Today's Briefing"}
+                          </Text>
+                          {!briefingActive && !briefingBusy ? (
+                            <View style={styles.newBadge}><Text style={styles.newBadgeText}>NEW</Text></View>
+                          ) : null}
+                        </View>
+                        <Text style={styles.briefingStripSub}>
+                          {briefingBusy
+                            ? 'Preparing your briefing…'
+                            : briefingActive
+                              ? (briefingPlaying ? 'Narrating · tap to pause' : 'Paused · tap to resume')
+                              : 'Three pieces · narrated for you'}
+                        </Text>
+                      </View>
+                      {briefingPlaying ? (
+                        <Equalizer playing color={Colors.white} />
+                      ) : briefing ? (
+                        <TouchableOpacity
+                          onPress={() => setShowScript(s => !s)}
+                          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        >
+                          <Text style={styles.briefingStripArrow}>{showScript ? '⌄' : '›'}</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <Text style={styles.briefingStripArrow}>›</Text>
+                      )}
+                    </LinearGradient>
                   </TouchableOpacity>
                   {briefing && showScript ? (
                     <View style={styles.briefingScriptCard}>
@@ -619,14 +629,26 @@ export default function FeedScreen() {
                   })}
                 </View>
               ) : null}
+
+              {/* LATEST — editorial section divider */}
+              {filteredItems.length > 0 ? (
+                <View style={styles.streamLabel}>
+                  <Text style={styles.streamLabelText}>LATEST</Text>
+                  <View style={styles.streamRule} />
+                  <Text style={styles.streamCount}>{filteredItems.length} {filteredItems.length === 1 ? 'story' : 'stories'}</Text>
+                </View>
+              ) : null}
             </View>
           }
-          renderItem={({ item }) => (
-            <FeedCard
-              item={item}
-              onLike={() => handleLike(item.id)}
-              onSave={() => handleSave(item.id)}
-            />
+          renderItem={({ item, index }) => (
+            <EntranceView delay={Math.min(index, 6) * 45}>
+              <FeedCard
+                item={item}
+                lead={index === 0}
+                onLike={() => handleLike(item.id)}
+                onSave={() => handleSave(item.id)}
+              />
+            </EntranceView>
           )}
           ListEmptyComponent={
             items.length === 0 ? (
@@ -791,43 +813,73 @@ const styles = StyleSheet.create({
   },
 
   // ─── Briefing strip ───────────────────────────────────────────────────────
+  briefingShadow: {
+    borderRadius: Radius.lg,
+    ...Shadow.glow,
+  },
   briefingStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: Colors.primary,
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.base,
     paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: Colors.hairlineGold,
+    overflow: 'hidden',
+  },
+  briefingSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 180,
+    height: 80,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderBottomRightRadius: 120,
   },
   briefingPlayBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   briefingPlayIcon: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.white,
     fontFamily: Fonts.sansBold,
   },
   briefingStripTitle: {
-    fontFamily: Fonts.sansBold,
+    fontFamily: Fonts.display,
     fontSize: 15,
     color: Colors.white,
     letterSpacing: -0.2,
+    flexShrink: 1,
+  },
+  newBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  newBadgeText: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 8.5,
+    letterSpacing: 1,
+    color: Colors.white,
   },
   briefingStripSub: {
     fontFamily: Fonts.sans,
     fontSize: 12,
-    color: 'rgba(255,255,255,0.65)',
+    color: 'rgba(255,255,255,0.78)',
     marginTop: 2,
   },
   briefingStripArrow: {
     fontSize: 22,
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.6)',
     lineHeight: 24,
   },
   briefingScriptCard: {
@@ -938,37 +990,35 @@ const styles = StyleSheet.create({
 
   // ─── Feed Card ───────────────────────────────────────────────────────────
   card: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     overflow: 'hidden',
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadow.sm,
+  },
+  cardLead: {
+    borderColor: Colors.hairlineGold,
+    ...Shadow.glow,
   },
   // Hero image / gradient area
   cardHeroBg: {
     width: '100%',
-    height: 185,
-    justifyContent: 'flex-end',
+    height: 210,
   },
-  // top portion — very light tint, image visible
-  cardScrimTop: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0,
-    height: '45%',
+  cardHeroBgLead: {
+    height: 280,
   },
-  // bottom portion — opaque enough for white text to be readable
-  cardScrimBottom: {
-    position: 'absolute',
-    bottom: 0, left: 0, right: 0,
-    height: '72%',
-  },
-  cardOverlay: {
+  // Full-bleed overlay: top row pinned top, headline block pinned bottom
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
     padding: Spacing.base,
-    gap: 5,
+    justifyContent: 'space-between',
   },
   cardOverlayTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
   },
   categoryPillOverlay: {
     flexDirection: 'row',
@@ -996,23 +1046,71 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
   },
   cardTitle: {
-    fontFamily: Fonts.sansBold,
-    fontSize: 16,
-    lineHeight: 22,
+    fontFamily: Fonts.display,
+    fontSize: 21,
+    lineHeight: 26,
     letterSpacing: -0.3,
+    color: '#fff',
+  },
+  cardTitleLead: {
+    fontFamily: Fonts.display,
+    fontSize: 26,
+    lineHeight: 31,
+    letterSpacing: -0.4,
     color: '#fff',
   },
   cardHookOverlay: {
     fontFamily: Fonts.sans,
-    fontSize: 12,
-    lineHeight: 17,
-    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    lineHeight: 18,
+    color: 'rgba(255,255,255,0.78)',
+    marginTop: 6,
   },
   sourceOverlay: {
     fontFamily: Fonts.sansMedium,
     fontSize: 11,
-    color: 'rgba(255,255,255,0.55)',
-    marginTop: 2,
+    color: 'rgba(255,255,255,0.6)',
+    flexShrink: 1,
+  },
+  heroMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    gap: 8,
+  },
+  socialProof: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  socialText: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  // ─── Stream label (LATEST divider) ─────────────────────────────────────────
+  streamLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 4,
+  },
+  streamLabelText: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    color: Colors.textSecondary,
+  },
+  streamRule: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.hairlineGold,
+  },
+  streamCount: {
+    fontFamily: Fonts.mono,
+    fontSize: 11,
+    color: Colors.textMuted,
   },
   // kept for legacy style references (unused in new layout but avoids TS errors)
   cardHook: {

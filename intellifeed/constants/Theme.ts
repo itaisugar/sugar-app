@@ -1,50 +1,65 @@
-// ─── Theme ───────────────────────────────────────────────────────────────────
-// Modern & clean palette — pure white surfaces, near-black text, crimson red
-// as the single bold accent. Typography stays Inter throughout.
+// ─── Theme — "Noir" ──────────────────────────────────────────────────────────
+// A dark, members'-club aesthetic: near-black surfaces, ivory text, a single
+// crimson accent + a champagne gold for trending/featured sparkle. Display type
+// is Space Grotesk; body is Inter; meta is Space Mono.
+//
+// Token NAMES are kept stable so the ~26 screens that read them re-skin to dark
+// automatically; new Noir-specific keys (gold, primarySoft, border, …) are added.
 
 import type { TextStyle } from 'react-native';
 
 export const Colors = {
   // Surfaces
-  background: '#FFFFFF',
-  backgroundDeep: '#F7F7F8',
-  surface: '#F7F7F8',
-  surfaceElevated: '#FFFFFF',
-  surfaceMuted: '#EFEFEF',
-  surfaceBorder: 'rgba(0,0,0,0.07)',
-  surfaceBorderStrong: 'rgba(0,0,0,0.14)',
+  background: '#0A090B',          // appBg — screen background (near-black)
+  appBgTop: '#100E12',            // gradient top of background
+  backgroundDeep: '#100E12',      // (legacy alias) deeper bg
+  surface: '#161319',             // card background
+  surfaceElevated: '#1C1922',     // raised card
+  surfaceAlt: '#201C24',          // inset / secondary surface
+  surfaceMuted: '#201C24',        // (legacy alias)
+  border: 'rgba(244,241,236,0.08)',
+  borderStrong: 'rgba(244,241,236,0.16)',
+  surfaceBorder: 'rgba(244,241,236,0.08)',        // (legacy alias) → border
+  surfaceBorderStrong: 'rgba(244,241,236,0.16)',  // (legacy alias) → borderStrong
 
-  // Text — neutral, high contrast
-  textPrimary: '#111111',
-  textSecondary: '#444444',
-  textMuted: '#888888',
-  textFaint: '#BBBBBB',
+  // Text — ivory on near-black
+  textPrimary: '#F4F1EC',
+  textSecondary: 'rgba(244,241,236,0.66)',
+  textMuted: 'rgba(244,241,236,0.44)',
+  textFaint: 'rgba(244,241,236,0.28)',
 
-  // Primary — crimson red
-  primary: '#D42B2B',
-  primaryDark: '#A81F1F',
-  primaryGlow: 'rgba(212,43,43,0.07)',
-  primaryGlowStrong: 'rgba(212,43,43,0.14)',
+  // Primary — crimson
+  primary: '#E5484D',
+  primaryDark: '#C42B30',
+  primarySoft: 'rgba(229,72,77,0.13)',
+  primarySoftStrong: 'rgba(229,72,77,0.22)',
+  primaryGlow: 'rgba(229,72,77,0.13)',        // (legacy alias) → primarySoft
+  primaryGlowStrong: 'rgba(229,72,77,0.22)',  // (legacy alias) → primarySoftStrong
+  onPrimary: '#FFFFFF',
 
-  // Secondary accents (neutral)
-  accentSage: '#2D6A4F',
-  accentOchre: '#B45309',
-  accentBurgundy: '#9F1239',
+  // Champagne gold — trending / featured accents
+  gold: '#CDA86A',
+  hairlineGold: 'rgba(205,168,106,0.32)',
+
+  // Secondary accents
+  accentSage: '#5FB89A',
+  accentOchre: '#E0A75E',
+  accentBurgundy: '#E36A82',
 
   // Functional
-  success: '#16A34A',
-  warning: '#D97706',
-  danger: '#D42B2B',
+  success: '#3DD68C',
+  warning: '#E0A75E',
+  danger: '#E5484D',
 
-  // Category tags — clean, minimal tints
-  tagSport: '#DC2626',
-  tagScience: '#2563EB',
-  tagAI: '#7C3AED',
-  tagPsych: '#059669',
-  tagHistory: '#92400E',
-  tagBusiness: '#1D4ED8',
-  tagHealth: '#16A34A',
-  tagPhilosophy: '#6D28D9',
+  // Category tags — vivid tints used over imagery
+  tagSport: '#EF4444',
+  tagScience: '#3B82F6',
+  tagAI: '#8B5CF6',
+  tagPsych: '#10B981',
+  tagHistory: '#B45309',
+  tagBusiness: '#6366F1',
+  tagHealth: '#10B981',
+  tagPhilosophy: '#A78BFA',
 
   white: '#FFFFFF',
   black: '#000000',
@@ -59,25 +74,30 @@ export const Colors = {
 // alive without surprise — they map to Inter equivalents so we get a
 // uniform product look without touching every screen.
 export const Fonts = {
-  // Primary — Inter
+  // Display — Space Grotesk (wordmark, titles, card headlines)
+  display: 'SpaceGrotesk_600SemiBold',
+  displayMedium: 'SpaceGrotesk_500Medium',
+  displayBold: 'SpaceGrotesk_700Bold',
+
+  // Body — Inter
   sans: 'Inter_400Regular',
   sansMedium: 'Inter_500Medium',
   sansSemibold: 'Inter_600SemiBold',
   sansBold: 'Inter_700Bold',
 
-  // Brand — Playfair Display (rare)
-  brand: 'PlayfairDisplay_700Bold',
-  brandItalic: 'PlayfairDisplay_400Regular_Italic',
+  // Meta — Space Mono
+  mono: 'SpaceMono_400Regular',
+  monoMedium: 'SpaceMono_700Bold',
 
-  // ── Legacy aliases — point to Inter so existing inline usages get the
-  //    new product feel without per-file edits.
-  serif: 'Inter_700Bold',
-  serifRegular: 'Inter_400Regular',
-  serifSemibold: 'Inter_600SemiBold',
-  serifItalic: 'Inter_400Regular',
-  serifItalicMedium: 'Inter_500Medium',
-  mono: 'Inter_500Medium',
-  monoMedium: 'Inter_600SemiBold',
+  // ── Legacy aliases — repointed to Space Grotesk so the wordmark and any
+  //    inline `brand`/`serif` usages adopt the Noir display face automatically.
+  brand: 'SpaceGrotesk_600SemiBold',
+  brandItalic: 'SpaceGrotesk_500Medium',
+  serif: 'SpaceGrotesk_600SemiBold',
+  serifRegular: 'SpaceGrotesk_400Regular',
+  serifSemibold: 'SpaceGrotesk_600SemiBold',
+  serifItalic: 'SpaceGrotesk_400Regular',
+  serifItalicMedium: 'SpaceGrotesk_500Medium',
 };
 
 // ─── Typography Tokens ──────────────────────────────────────────────────────
@@ -86,74 +106,73 @@ export const Fonts = {
 // body) to match a comfortable scrolling feed.
 
 export const TextStyles: Record<string, TextStyle> = {
-  // ── BRAND (Playfair Display — rare) ─────────────────────────────────────
+  // ── BRAND / DISPLAY (Space Grotesk) ─────────────────────────────────────
   appTitle: {
-    fontFamily: Fonts.brand,
-    fontSize: 28,
-    lineHeight: 32,
+    fontFamily: Fonts.display,
+    fontSize: 26,
+    lineHeight: 30,
     letterSpacing: -0.4,
     color: Colors.textPrimary,
   },
   brandHero: {
-    fontFamily: Fonts.brand,
+    fontFamily: Fonts.display,
     fontSize: 32,
     lineHeight: 36,
     letterSpacing: -0.5,
     color: Colors.textPrimary,
   },
 
-  // ── PRODUCT TITLES (Inter) ──────────────────────────────────────────────
+  // ── PRODUCT TITLES (Space Grotesk) ──────────────────────────────────────
   screenTitle: {
-    fontFamily: Fonts.sansBold,
-    fontSize: 24,
-    lineHeight: 28,
-    letterSpacing: -0.3,
+    fontFamily: Fonts.display,
+    fontSize: 30,
+    lineHeight: 34,
+    letterSpacing: -0.6,
     color: Colors.textPrimary,
   },
   heroTitle: {
-    // Used for in-flow hero headlines (onboarding step intros, etc.) — still
-    // Inter, not Playfair, so it feels product-y rather than editorial.
-    fontFamily: Fonts.sansBold,
+    fontFamily: Fonts.display,
     fontSize: 26,
-    lineHeight: 32,
+    lineHeight: 30,
     letterSpacing: -0.4,
     color: Colors.textPrimary,
   },
   sectionTitle: {
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 17,
-    lineHeight: 22,
-    letterSpacing: -0.1,
+    fontFamily: Fonts.display,
+    fontSize: 18,
+    lineHeight: 23,
+    letterSpacing: -0.2,
     color: Colors.textPrimary,
   },
 
   // Feed-card titles + small editorial cards
   cardTitle: {
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 17,
-    lineHeight: 22,
-    letterSpacing: -0.2,
+    fontFamily: Fonts.display,
+    fontSize: 21,
+    lineHeight: 26,
+    letterSpacing: -0.3,
     color: Colors.textPrimary,
   },
   cardTitleSmall: {
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 15,
-    lineHeight: 20,
+    fontFamily: Fonts.display,
+    fontSize: 16,
+    lineHeight: 21,
+    letterSpacing: -0.2,
     color: Colors.textPrimary,
   },
 
   // Aliases that match the requested token names exactly
   feedTitle: {
-    fontFamily: Fonts.sansSemibold,
-    fontSize: 17,
-    lineHeight: 22,
-    letterSpacing: -0.2,
+    fontFamily: Fonts.display,
+    fontSize: 21,
+    lineHeight: 26,
+    letterSpacing: -0.3,
     color: Colors.textPrimary,
   },
   articleTitle: {
-    fontFamily: Fonts.sansBold,
-    fontSize: 24,
-    lineHeight: 30,
+    fontFamily: Fonts.display,
+    fontSize: 26,
+    lineHeight: 32,
     letterSpacing: -0.4,
     color: Colors.textPrimary,
   },
@@ -227,14 +246,15 @@ export const TextStyles: Record<string, TextStyle> = {
   // ── KICKER / OVERLINE (Inter, sparing letter-spacing) ──────────────────
   kicker: {
     fontFamily: Fonts.sansSemibold,
-    fontSize: 11,
-    letterSpacing: 0.3,
+    fontSize: 10.5,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
     color: Colors.primary,
   },
   overline: {
     fontFamily: Fonts.sansSemibold,
-    fontSize: 11,
-    letterSpacing: 0.4,
+    fontSize: 10.5,
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
     color: Colors.textMuted,
   },
@@ -337,13 +357,13 @@ export const TextStyles: Record<string, TextStyle> = {
     fontFamily: Fonts.sansSemibold,
     fontSize: 15,
     letterSpacing: 0.1,
-    color: Colors.surface,
+    color: Colors.onPrimary,
   },
   buttonPrimary: {
     fontFamily: Fonts.sansSemibold,
     fontSize: 15,
     letterSpacing: 0.1,
-    color: Colors.surface,
+    color: Colors.onPrimary,
   },
   buttonSecondary: {
     fontFamily: Fonts.sansSemibold,
@@ -394,33 +414,42 @@ export const Spacing = {
 export const Radius = {
   sm: 6,
   md: 10,
-  lg: 14,
+  lg: 16,
   xl: 18,
+  card: 20,
   xxl: 24,
   full: 999,
 };
 
-// Soft shadows — subtle, modern, not editorial.
+// Shadows — deep & dark for the Noir surfaces.
 export const Shadow = {
   sm: {
-    shadowColor: '#241C12',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.42,
+    shadowRadius: 16,
+    elevation: 4,
   },
   md: {
-    shadowColor: '#241C12',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 8,
   },
   lg: {
-    shadowColor: '#241C12',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.10,
-    shadowRadius: 18,
-    elevation: 5,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.6,
+    shadowRadius: 40,
+    elevation: 14,
+  },
+  // Crimson "glow" for lead/featured cards.
+  glow: {
+    shadowColor: '#E5484D',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.35,
+    shadowRadius: 40,
+    elevation: 16,
   },
 };

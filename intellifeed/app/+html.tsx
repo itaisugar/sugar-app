@@ -28,12 +28,9 @@ export default function Root({ children }: { children: ReactNode }) {
   );
 }
 
+// The app is always Noir (dark) — pin the shell background so there is no
+// white flash on load, regardless of the OS color scheme.
 const responsiveBackground = `
 body {
-  background-color: #fff;
-}
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #000;
-  }
+  background-color: #0A090B;
 }`;
