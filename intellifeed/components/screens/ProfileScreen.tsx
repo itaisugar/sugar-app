@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
+import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../constants/Theme';
+import { Tappable, EntranceView } from '../ui';
 import { useAuth } from '../../lib/AuthContext';
 import { useProfile } from '../../lib/ProfileContext';
 import { fetchSavedItems } from '../../lib/saved';
@@ -127,8 +128,10 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
+       <EntranceView>
         {/* Hero */}
         <View style={styles.hero}>
+          <Text style={[TextStyles.overline, { marginBottom: Spacing.base }]}>YOUR STANDING</Text>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>
               {(displayName ?? displayEmail ?? 'I').charAt(0).toUpperCase()}
@@ -144,13 +147,12 @@ export default function ProfileScreen() {
             Track your intellectual evolution.
           </Text>
 
-          <TouchableOpacity
+          <Tappable
             style={styles.editBtn}
             onPress={() => router.push('/edit-profile')}
-            activeOpacity={0.85}
           >
             <Text style={styles.editBtnText}>Edit Profile</Text>
-          </TouchableOpacity>
+          </Tappable>
 
           <View style={styles.followRow}>
             <View style={styles.followItem}>
@@ -237,15 +239,14 @@ export default function ProfileScreen() {
                 { value: booksCompleted, label: 'Books Completed' },
                 { value: plansCompleted, label: 'Plans Executed' },
               ].map(stat => (
-                <TouchableOpacity
+                <Tappable
                   key={stat.label}
-                  activeOpacity={stat.onPress ? 0.8 : 1}
-                  onPress={stat.onPress}
+                  onPress={stat.onPress ?? (() => {})}
                   style={styles.statCard}
                 >
                   <Text style={TextStyles.statNumberLarge}>{stat.value}</Text>
                   <Text style={[TextStyles.statLabel, { textAlign: 'center', marginTop: 4 }]}>{stat.label}</Text>
-                </TouchableOpacity>
+                </Tappable>
               ))}
             </View>
 
@@ -307,11 +308,10 @@ export default function ProfileScreen() {
             ) : (
               <View style={styles.savedList}>
                 {savedItems.map(item => (
-                  <TouchableOpacity
+                  <Tappable
                     key={item.id}
                     style={styles.savedRow}
                     onPress={() => router.push({ pathname: '/article/[id]', params: { id: item.id } })}
-                    activeOpacity={0.85}
                   >
                     {item.image ? (
                       <Image source={{ uri: item.image }} style={styles.savedThumb} />
@@ -327,7 +327,7 @@ export default function ProfileScreen() {
                         {item.source} · {item.readTime} min
                       </Text>
                     </View>
-                  </TouchableOpacity>
+                  </Tappable>
                 ))}
               </View>
             )}
@@ -369,6 +369,7 @@ export default function ProfileScreen() {
         <View style={styles.footer}>
           <Text style={styles.footerText}>Sapience · Upgrade Your Cognitive Diet</Text>
         </View>
+       </EntranceView>
       </ScrollView>
     </SafeAreaView>
   );
@@ -512,17 +513,18 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: Colors.primary,
+    borderColor: Colors.hairlineGold,
     marginBottom: Spacing.base,
+    ...Shadow.glow,
   },
   avatarText: {
     fontSize: 42,
-    fontFamily: Fonts.serif,
-    color: Colors.primary,
+    fontFamily: Fonts.display,
+    color: Colors.onPrimary,
   },
   heroName: {
     fontSize: 30,
@@ -554,12 +556,13 @@ const styles = StyleSheet.create({
   followRow: {
     flexDirection: 'row',
     backgroundColor: Colors.surface,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.lg,
     paddingVertical: Spacing.base,
     paddingHorizontal: Spacing.xl,
     gap: 32,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    borderColor: Colors.border,
+    ...Shadow.sm,
   },
   followItem: { alignItems: 'center' },
   followNumber: {
@@ -581,11 +584,12 @@ const styles = StyleSheet.create({
   scoreCard: {
     backgroundColor: Colors.surface,
     marginHorizontal: Spacing.lg,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     padding: Spacing.lg,
     marginBottom: Spacing.base,
     borderWidth: 1,
-    borderColor: Colors.primary,
+    borderColor: Colors.hairlineGold,
+    ...Shadow.glow,
   },
   scoreMain: {
     alignItems: 'center',
@@ -630,11 +634,12 @@ const styles = StyleSheet.create({
   levelCard: {
     backgroundColor: Colors.surface,
     marginHorizontal: Spacing.lg,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     padding: Spacing.lg,
     marginBottom: Spacing.base,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    borderColor: Colors.border,
+    ...Shadow.sm,
   },
   levelHeader: {
     flexDirection: 'row',
@@ -691,15 +696,15 @@ const styles = StyleSheet.create({
   },
   sectionTab: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: Radius.sm,
+    paddingVertical: 11,
+    borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    borderColor: Colors.borderStrong,
     alignItems: 'center',
   },
   sectionTabActive: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.primaryGlow,
+    backgroundColor: Colors.primary,
   },
   sectionTabText: {
     fontSize: 11,
@@ -709,7 +714,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   sectionTabTextActive: {
-    color: Colors.primary,
+    color: Colors.onPrimary,
     fontFamily: Fonts.sansSemibold,
   },
 
@@ -740,12 +745,13 @@ const styles = StyleSheet.create({
   statCard: {
     width: '47%',
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     padding: Spacing.lg,
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    borderColor: Colors.border,
+    ...Shadow.sm,
   },
   statValue: {
     fontSize: 36,
@@ -764,10 +770,11 @@ const styles = StyleSheet.create({
 
   interestsCard: {
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    borderColor: Colors.border,
+    ...Shadow.sm,
   },
   interestsOverline: {
     fontSize: 10,
@@ -925,11 +932,12 @@ const styles = StyleSheet.create({
   settingsCard: {
     backgroundColor: Colors.surface,
     marginHorizontal: Spacing.lg,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    borderColor: Colors.border,
     overflow: 'hidden',
     marginTop: Spacing.sm,
+    ...Shadow.sm,
   },
   settingsRow: {
     flexDirection: 'row',
