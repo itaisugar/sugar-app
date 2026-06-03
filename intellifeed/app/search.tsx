@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   avatarText: {
-    fontFamily: Fonts.serif, fontSize: 16, color: Colors.surface,
+    fontFamily: Fonts.display, fontSize: 16, color: Colors.onPrimary,
   },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   name: {

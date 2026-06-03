@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   stepCheckDone: {
     backgroundColor: Colors.primary, borderColor: Colors.primary,
   },
-  stepCheckIcon: { color: Colors.surface, fontSize: 12, fontFamily: Fonts.sansBold },
+  stepCheckIcon: { color: Colors.onPrimary, fontSize: 12, fontFamily: Fonts.sansBold },
   stepTitle: {
     fontFamily: Fonts.serif, fontSize: 16, lineHeight: 22,
     color: Colors.textPrimary,

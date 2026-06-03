@@ -8,7 +8,8 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, Radius, Fonts, TextStyles } from '../../constants/Theme';
+import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../constants/Theme';
+import { Tappable, EntranceView } from '../ui';
 import { PLAN_ITEMS, PlanItem, PlanStep } from '../../constants/MockData';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -136,17 +137,18 @@ export default function PlanScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
+       <EntranceView>
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={TextStyles.kicker}>From Theory to Action</Text>
-            <Text style={[TextStyles.screenTitle, { marginTop: 4 }]}>
+            <Text style={TextStyles.overline}>FROM THEORY TO ACTION</Text>
+            <Text style={[TextStyles.screenTitle, { marginTop: 6 }]}>
               Plan<Text style={{ color: Colors.primary }}>.</Text>
             </Text>
-            <Text style={[TextStyles.tagline, { marginTop: 6 }]}>Convert insights into concrete steps.</Text>
+            <Text style={styles.tagline}>Convert insights into concrete steps.</Text>
           </View>
-          <TouchableOpacity style={styles.addBtn}>
+          <Tappable style={styles.addBtn} onPress={() => {}}>
             <Text style={styles.addBtnText}>+ New</Text>
-          </TouchableOpacity>
+          </Tappable>
         </View>
 
         <View style={styles.summaryCard}>
@@ -188,6 +190,7 @@ export default function PlanScreen() {
             </Text>
           </View>
         </View>
+       </EntranceView>
       </ScrollView>
     </SafeAreaView>
   );
@@ -217,33 +220,32 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   tagline: {
-    fontFamily: Fonts.serifItalic,
+    fontFamily: Fonts.sans,
     fontSize: 14,
     color: Colors.textSecondary,
-    marginTop: 4,
+    marginTop: 6,
   },
   addBtn: {
-    borderWidth: 1,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.full,
   },
   addBtnText: {
-    color: Colors.primary,
+    color: Colors.onPrimary,
     fontFamily: Fonts.sansSemibold,
     fontSize: 12,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   summaryCard: {
     backgroundColor: Colors.surface,
     marginHorizontal: Spacing.lg,
     marginTop: Spacing.base,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    borderColor: Colors.border,
+    ...Shadow.sm,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -275,15 +277,18 @@ const styles = StyleSheet.create({
   },
   summaryDivider: { width: 1, height: 48, backgroundColor: Colors.surfaceBorder },
   insightCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.primarySoft,
     marginHorizontal: Spacing.lg,
     marginTop: Spacing.base,
     marginBottom: Spacing.lg,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     padding: Spacing.lg,
     borderLeftWidth: 2,
     borderLeftColor: Colors.primary,
+    borderWidth: 1,
+    borderColor: Colors.hairlineGold,
   },
+  insightCardInner: {},
   insightLabel: {
     fontSize: 10,
     fontFamily: Fonts.sansSemibold,
@@ -299,10 +304,11 @@ const styles = StyleSheet.create({
   },
   planCard: {
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    borderColor: Colors.border,
+    ...Shadow.sm,
   },
   planHeader: {
     flexDirection: 'row',
@@ -410,7 +416,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   stepCheckIcon: {
-    color: Colors.background,
+    color: Colors.onPrimary,
     fontSize: 12,
     fontFamily: Fonts.sansBold,
   },
@@ -458,12 +464,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   aiHint: {
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.primarySoft,
     borderRadius: Radius.md,
     padding: Spacing.base,
     marginTop: Spacing.base,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    borderColor: Colors.hairlineGold,
   },
   aiHintLabel: {
     fontSize: 9,
@@ -484,9 +490,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     gap: 8,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    borderColor: Colors.borderStrong,
     borderStyle: 'dashed',
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
   },
   emptyPromptTitle: {
     fontSize: 20,

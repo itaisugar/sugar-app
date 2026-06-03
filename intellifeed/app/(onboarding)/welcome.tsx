@@ -232,8 +232,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.transparent,
   },
   chipActive: {
-    backgroundColor: Colors.textPrimary,
-    borderColor: Colors.textPrimary,
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   chipText: {
     fontSize: 14,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   chipTextActive: {
-    color: Colors.surface,
+    color: Colors.onPrimary,
     fontFamily: Fonts.serifRegular,
   },
   selectedCount: {

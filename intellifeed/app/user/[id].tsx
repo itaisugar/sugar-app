@@ -124,7 +124,7 @@ export default function PublicProfileScreen() {
             >
               <Text style={[
                 styles.followBtnText,
-                following && { color: Colors.surface },
+                following && { color: Colors.onPrimary },
               ]}>
                 {following ? 'Following' : 'Follow'}
               </Text>
@@ -244,9 +244,9 @@ const styles = StyleSheet.create({
     ...Shadow.md,
   },
   avatarText: {
-    fontFamily: Fonts.serifItalicMedium,
+    fontFamily: Fonts.display,
     fontSize: 44,
-    color: Colors.surface,
+    color: Colors.onPrimary,
   },
   name: {
     fontFamily: Fonts.serif,

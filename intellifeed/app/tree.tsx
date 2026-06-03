@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   primaryAction: {
     paddingHorizontal: 14, paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: Colors.textPrimary,
+    backgroundColor: Colors.primary,
   },
   secondaryAction: {
     paddingHorizontal: 14, paddingVertical: 10,

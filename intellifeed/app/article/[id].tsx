@@ -242,7 +242,7 @@ export default function ArticleReader() {
         <Text style={TextStyles.overline}>Reader</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity onPress={toggleSave} disabled={saveBusy} style={[styles.iconBtn, saved && styles.iconBtnActive]}>
-            <Text style={[styles.iconBtnText, saved && { color: Colors.surface }]}>★</Text>
+            <Text style={[styles.iconBtnText, saved && { color: Colors.onPrimary }]}>★</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -485,7 +485,7 @@ export default function ArticleReader() {
           style={[styles.readBtn, read && styles.readBtnDone]}
         >
           {readBusy ? (
-            <ActivityIndicator size="small" color={read ? Colors.surface : Colors.primary} />
+            <ActivityIndicator size="small" color={read ? Colors.onPrimary : Colors.primary} />
           ) : (
             <Text style={[styles.readBtnText, read && styles.readBtnTextDone]}>
               {read ? '✓ Marked as read' : '＋ I read this article'}
@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { color: Colors.surface, fontFamily: Fonts.serif, fontSize: 14 },
+  avatarText: { color: Colors.onPrimary, fontFamily: Fonts.display, fontSize: 14 },
   bylineName: { fontFamily: Fonts.sansSemibold, fontSize: 13, color: Colors.textPrimary },
   bylineMeta: { fontFamily: Fonts.sans, fontSize: 11, color: Colors.textMuted, marginTop: 2 },
   followBtn: {
@@ -643,7 +643,7 @@ const styles = StyleSheet.create({
 
   heroImage: {
     width: '100%', height: 200,
-    marginTop: Spacing.lg, borderRadius: Radius.md,
+    marginTop: Spacing.lg, borderRadius: Radius.lg,
     backgroundColor: Colors.surfaceMuted,
   },
 
@@ -651,21 +651,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 14,
     marginTop: Spacing.lg,
     padding: Spacing.base,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.textPrimary,
+    borderRadius: Radius.card,
+    backgroundColor: Colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   audioCardActive: {
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: Colors.primarySoft,
+    borderColor: Colors.hairlineGold,
   },
   audioPlay: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center',
   },
-  audioPlayIcon: { color: Colors.surface, fontSize: 14, fontFamily: Fonts.sansBold },
-  audioLabel: { color: Colors.textFaint, fontFamily: Fonts.monoMedium, fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase' },
-  audioTitle: { color: Colors.surface, fontFamily: Fonts.serif, fontSize: 14, marginTop: 4 },
-  audioArrow: { color: Colors.surface, fontSize: 18 },
+  audioPlayIcon: { color: Colors.onPrimary, fontSize: 14, fontFamily: Fonts.sansBold },
+  audioLabel: { color: Colors.textMuted, fontFamily: Fonts.monoMedium, fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase' },
+  audioTitle: { color: Colors.textPrimary, fontFamily: Fonts.display, fontSize: 14, marginTop: 4 },
+  audioArrow: { color: Colors.textMuted, fontSize: 18 },
 
   bodyBlock: { marginTop: Spacing.lg },
   bodyParagraph: {
@@ -757,7 +760,7 @@ const styles = StyleSheet.create({
   leafBtnText: {
     fontFamily: Fonts.sansSemibold,
     fontSize: 11,
-    color: Colors.surface,
+    color: Colors.onPrimary,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
@@ -824,7 +827,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   readBtnTextDone: {
-    color: Colors.surface,
+    color: Colors.onPrimary,
   },
   tagsBlock: { marginTop: Spacing.xl },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
@@ -854,10 +857,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 9,
     borderRadius: 999,
   },
-  chipPrimary: { backgroundColor: Colors.textPrimary },
-  chipActive: { backgroundColor: Colors.background },
+  chipPrimary: { backgroundColor: Colors.primary },
+  chipActive: { backgroundColor: Colors.primarySoft },
   chipText: { fontFamily: Fonts.sansMedium, fontSize: 12, color: Colors.textPrimary, letterSpacing: 0.3 },
-  chipTextPrimary: { color: Colors.surface, fontFamily: Fonts.sansBold },
+  chipTextPrimary: { color: Colors.onPrimary, fontFamily: Fonts.sansBold },
   chipTextActive: { color: Colors.textPrimary, fontFamily: Fonts.sansSemibold },
 
   backBtnPrimary: {

@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: Colors.background,
   },
   avatarText: {
-    color: Colors.surface,
+    color: Colors.onPrimary,
     fontFamily: Fonts.serif, fontSize: 11,
   },
   ctaBtn: {
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   ctaText: {
     fontFamily: Fonts.sansSemibold, fontSize: 11,
     letterSpacing: 0.6, textTransform: 'uppercase',
-    color: Colors.surface,
+    color: Colors.onPrimary,
   },
 
   section: { marginTop: Spacing.xl },
@@ -359,8 +359,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', gap: 12,
     padding: Spacing.base,
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 0.5, borderColor: Colors.surfaceBorder,
+    borderRadius: Radius.card,
+    borderWidth: 1, borderColor: Colors.border,
+    ...Shadow.sm,
   },
   readingCover: {
     width: 84, height: 110,
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
     width: 30, height: 30, borderRadius: 15,
     alignItems: 'center', justifyContent: 'center',
   },
-  messageInitial: { color: Colors.surface, fontFamily: Fonts.serif, fontSize: 12 },
+  messageInitial: { color: Colors.onPrimary, fontFamily: Fonts.serif, fontSize: 12 },
   messageHeader: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 4 },
   messageWho: { fontFamily: Fonts.sansSemibold, fontSize: 12, color: Colors.textPrimary },
   messageText: { fontFamily: Fonts.serifRegular, fontSize: 14, lineHeight: 21, color: Colors.textSecondary },
@@ -418,7 +419,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   postBtnText: {
-    color: Colors.surface,
+    color: Colors.onPrimary,
     fontFamily: Fonts.sansSemibold,
     fontSize: 11,
     letterSpacing: 0.6,
