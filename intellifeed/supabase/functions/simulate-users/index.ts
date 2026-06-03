@@ -4,10 +4,11 @@
 //  מיקום: supabase/functions/simulate-users/index.ts
 // ════════════════════════════════════════════════════════════
 
-import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "npm:@supabase/supabase-js";
 
-const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
+// .trim() strips a stray newline/space from the stored secret. (A non-ASCII
+// char in the key — e.g. pasted Hebrew — will still fail; the key must be ASCII.)
+const ANTHROPIC_API_KEY = (Deno.env.get("ANTHROPIC_API_KEY") ?? "").trim();
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -79,15 +80,23 @@ type AgentResult = {
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-// קריאה בודדת ל-Claude עם זיכרון
+// קריאה בודדת ל-Claude עם זיכרון — fetch ישיר, זהה לפונקציות הקיימות
 async function ask(system: string, memory: Msg[], maxTokens = 600): Promise<string> {
-  const res = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: maxTokens,
-    system,
-    messages: memory,
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: memory }),
   });
-  return res.content[0].type === "text" ? res.content[0].text : "";
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Anthropic ${res.status}: ${detail.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  return data?.content?.[0]?.type === "text" ? data.content[0].text : "";
 }
 
 // ── סוכן בודד: עובר את כל המסע ────────────────────────────────
