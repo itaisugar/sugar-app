@@ -16,6 +16,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { Colors, Fonts } from '../../constants/Theme';
 import { getCategoryStyle } from '../../constants/Categories';
 import { EASE, useReducedMotion } from '../../lib/motion';
@@ -199,6 +200,41 @@ export function EntranceView({ children, style, delay = 0 }: { children: React.R
     <Animated.View style={[style, { opacity: p, transform: [{ translateY: p.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }]}>
       {children}
     </Animated.View>
+  );
+}
+
+// ── ProgressRing — circular progress with a centered label ──────────────────
+export function ProgressRing({ pct, size = 46, stroke = 3.5, color = Colors.primary, label, trackColor = Colors.border }: {
+  pct: number; size?: number; stroke?: number; color?: string; label?: string; trackColor?: string;
+}) {
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const off = circ * (1 - Math.max(0, Math.min(100, pct)) / 100);
+  const c = size / 2;
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
+        <Circle cx={c} cy={c} r={r} fill="none" stroke={trackColor} strokeWidth={stroke} />
+        <Circle
+          cx={c} cy={c} r={r} fill="none" stroke={color} strokeWidth={stroke}
+          strokeLinecap="round" strokeDasharray={`${circ} ${circ}`} strokeDashoffset={off}
+        />
+      </Svg>
+      <Text style={{ fontFamily: Fonts.sansBold, fontSize: size > 40 ? 12.5 : 10.5, letterSpacing: -0.2, color: Colors.textPrimary }}>
+        {label != null ? label : `${Math.round(pct)}%`}
+      </Text>
+    </View>
+  );
+}
+
+// ── Progress — slim horizontal bar ──────────────────────────────────────────
+export function Progress({ pct, color = Colors.primary, height = 3, track = Colors.border }: {
+  pct: number; color?: string; height?: number; track?: string;
+}) {
+  return (
+    <View style={{ height, backgroundColor: track, borderRadius: height, overflow: 'hidden' }}>
+      <View style={{ height: '100%', width: `${Math.max(0, Math.min(100, pct))}%`, backgroundColor: color, borderRadius: height }} />
+    </View>
   );
 }
 

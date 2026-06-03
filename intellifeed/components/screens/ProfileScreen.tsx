@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Image } from 'react-native';
 import {
   View,
   Text,
+  Image,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -10,366 +10,332 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../constants/Theme';
-import { Tappable, EntranceView } from '../ui';
+import { Tappable, EntranceView, ProgressRing, Progress } from '../ui';
+import { getCategoryStyle } from '../../constants/Categories';
+import { USER_PROFILE, KnowledgeNode } from '../../constants/MockData';
 import { useAuth } from '../../lib/AuthContext';
 import { useProfile } from '../../lib/ProfileContext';
 import { fetchSavedItems } from '../../lib/saved';
 import { FeedItem } from '../../lib/content';
 
-function deriveTier(score: number): string {
-  if (score >= 5000) return 'Grand Master';
-  if (score >= 3000) return 'Master Learner';
-  if (score >= 1500) return 'Expert Learner';
-  if (score >= 500) return 'Devoted Reader';
-  if (score >= 100) return 'Engaged Reader';
-  return 'New Reader';
+const DOMAIN_COLORS = ['#12B886', '#4D8DF6', '#E0962B', '#13B6CC'];
+
+const TIERS = [
+  { min: 0, label: 'New Reader' },
+  { min: 100, label: 'Engaged Reader' },
+  { min: 500, label: 'Devoted Reader' },
+  { min: 1500, label: 'Expert Learner' },
+  { min: 3000, label: 'Master Learner' },
+  { min: 5000, label: 'Grand Master' },
+];
+function tierFor(score: number) {
+  let cur = TIERS[0], next = TIERS[TIERS.length - 1];
+  for (let i = 0; i < TIERS.length; i++) {
+    if (score >= TIERS[i].min) { cur = TIERS[i]; next = TIERS[i + 1] ?? TIERS[i]; }
+  }
+  const nextAt = next.min > cur.min ? next.min : cur.min;
+  return { tier: cur.label, nextTier: next.label, nextTierAt: nextAt, maxed: next.min === cur.min };
+}
+
+// ── Concentric "Cognitive Map" rings ────────────────────────────────────────
+function KnowledgeRings({ domains }: { domains: KnowledgeNode[] }) {
+  const size = 168, c = size / 2;
+  const stroke = 11, gap = 5.5, outer = size / 2 - stroke / 2 - 2;
+  const avg = Math.round(domains.reduce((a, d) => a + d.score, 0) / domains.length);
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <Svg width={size} height={size} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
+          {domains.map((d, i) => {
+            const r = outer - i * (stroke + gap);
+            const circ = 2 * Math.PI * r;
+            const col = DOMAIN_COLORS[i % DOMAIN_COLORS.length];
+            return (
+              <React.Fragment key={i}>
+                <Circle cx={c} cy={c} r={r} fill="none" stroke={col} strokeOpacity={0.16} strokeWidth={stroke} />
+                <Circle cx={c} cy={c} r={r} fill="none" stroke={col} strokeWidth={stroke}
+                  strokeLinecap="round" strokeDasharray={`${circ} ${circ}`} strokeDashoffset={circ * (1 - d.score / 100)} />
+              </React.Fragment>
+            );
+          })}
+        </Svg>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={styles.ringIndex}>{avg}</Text>
+          <Text style={styles.ringIndexLabel}>COGNITIVE INDEX</Text>
+        </View>
+      </View>
+      <View style={styles.legend}>
+        {domains.map((d, i) => (
+          <View key={i} style={styles.legendRow}>
+            <View style={[styles.legendDot, { backgroundColor: DOMAIN_COLORS[i % DOMAIN_COLORS.length] }]} />
+            <Text style={styles.legendLabel} numberOfLines={1}>{d.label}</Text>
+            <Text style={styles.legendScore}>{d.score}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ── Domain breakdown row ────────────────────────────────────────────────────
+function DomainRow({ node, color, defaultOpen }: { node: KnowledgeNode; color: string; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  const children = node.children ?? [];
+  return (
+    <View style={[styles.card, { padding: 0 }]}>
+      <View style={{ flexDirection: 'row' }}>
+        <View style={{ width: 3, backgroundColor: color }} />
+        <View style={{ flex: 1, padding: Spacing.base }}>
+          <TouchableOpacity onPress={() => setOpen(o => !o)} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 13 }}>
+            <ProgressRing pct={node.score} size={44} stroke={3.5} color={color} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.domainLabel}>{node.label}</Text>
+              <Text style={styles.domainSub}>{children.length} areas tracked</Text>
+            </View>
+            <Text style={styles.chev}>{open ? '⌄' : '›'}</Text>
+          </TouchableOpacity>
+          {open ? (
+            <View style={styles.domainChildren}>
+              {children.map(ch => (
+                <View key={ch.id ?? ch.label}>
+                  <View style={styles.domainChildHead}>
+                    <Text style={styles.domainChildLabel}>{ch.label}</Text>
+                    <Text style={[styles.domainChildScore, { color }]}>{ch.score}</Text>
+                  </View>
+                  <Progress pct={ch.score} color={color} height={3} />
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      </View>
+    </View>
+  );
 }
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { profile: dbProfile, loading: profileLoading, error: profileError, refresh } = useProfile();
-  const [activeSection, setActiveSection] = useState<'stats' | 'knowledge' | 'saved'>('stats');
+  const [tab, setTab] = useState<'stats' | 'knowledge' | 'saved'>('stats');
   const [signingOut, setSigningOut] = useState(false);
   const [savedItems, setSavedItems] = useState<FeedItem[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
 
   useEffect(() => {
-    if (activeSection !== 'saved') return;
+    if (tab !== 'saved') return;
     (async () => {
       setSavedLoading(true);
-      try {
-        const items = await fetchSavedItems();
-        setSavedItems(items);
-      } catch {} finally {
-        setSavedLoading(false);
-      }
+      try { setSavedItems(await fetchSavedItems()); } catch {} finally { setSavedLoading(false); }
     })();
-  }, [activeSection]);
+  }, [tab]);
 
-  const handleSignOut = async () => {
-    setSigningOut(true);
-    await signOut();
-  };
-
-  // Loading state — only when we have no profile yet
   if (profileLoading && !dbProfile) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <ActivityIndicator color={Colors.primary} />
-          <Text style={styles.statusText}>Loading your profile…</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <SafeAreaView style={styles.container}><View style={styles.centered}><ActivityIndicator color={Colors.primary} /><Text style={styles.statusText}>Loading your profile…</Text></View></SafeAreaView>;
   }
-
-  // Error state
   if (profileError && !dbProfile) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <Text style={TextStyles.emptyTitle}>Couldn't load your profile</Text>
-          <Text style={styles.statusText}>{profileError}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={refresh}>
-            <Text style={styles.retryBtnText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
+    return <SafeAreaView style={styles.container}><View style={styles.centered}><Text style={TextStyles.emptyTitle}>Couldn't load your profile</Text><Text style={styles.statusText}>{profileError}</Text><TouchableOpacity style={styles.retryBtn} onPress={refresh}><Text style={styles.retryBtnText}>Try Again</Text></TouchableOpacity></View></SafeAreaView>;
   }
-
-  // Empty state — authenticated but no profile row found (rare; trigger should always create one)
   if (!dbProfile) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <Text style={TextStyles.emptyTitle}>No profile found</Text>
-          <Text style={styles.statusText}>
-            Your profile hasn't been initialized yet. Please sign out and sign back in.
-          </Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={signOut}>
-            <Text style={styles.retryBtnText}>Sign Out</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
+    return <SafeAreaView style={styles.container}><View style={styles.centered}><Text style={TextStyles.emptyTitle}>No profile found</Text><Text style={styles.statusText}>Please sign out and sign back in.</Text><TouchableOpacity style={styles.retryBtn} onPress={signOut}><Text style={styles.retryBtnText}>Sign Out</Text></TouchableOpacity></View></SafeAreaView>;
   }
 
-  // Derived display values — strictly from the authenticated user's DB row
-  const displayEmail = dbProfile.email ?? user?.email ?? '';
   const displayName = dbProfile.full_name ?? 'Reader';
-  const userInterests = dbProfile.interests?.length ? dbProfile.interests : null;
-  const memberSince = dbProfile.created_at
-    ? new Date(dbProfile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-    : '—';
-  const dobFormatted = dbProfile.date_of_birth
-    ? new Date(dbProfile.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-    : null;
+  const displayEmail = dbProfile.email ?? user?.email ?? '';
+  const initial = (displayName || displayEmail || 'I').charAt(0).toUpperCase();
+  const handle = displayEmail ? `@${displayEmail.split('@')[0]}` : '@reader';
+  const bio = (dbProfile as any).bio ?? 'Building a deliberate cognitive diet — reading at the intersection of medicine, machines, and the mind.';
 
   const totalScore = dbProfile.total_score ?? 0;
-  const weeklyStreak = dbProfile.weekly_streak ?? 0;
+  const { tier, nextTier, nextTierAt, maxed } = tierFor(totalScore);
+  const tierPct = maxed ? 100 : Math.min(100, Math.round((totalScore / nextTierAt) * 100));
+  const pointsToNext = Math.max(0, nextTierAt - totalScore);
+
+  const streak = dbProfile.weekly_streak ?? dbProfile.day_streak ?? 0;
   const articlesRead = dbProfile.articles_read ?? 0;
-  const podcastsListened = dbProfile.podcasts_listened ?? 0;
-  const booksCompleted = dbProfile.books_completed ?? 0;
+  const podcasts = dbProfile.podcasts_listened ?? 0;
+  const books = dbProfile.books_completed ?? 0;
   const plansCompleted = dbProfile.plans_completed ?? 0;
   const following = dbProfile.following ?? 0;
   const followers = dbProfile.followers ?? 0;
+  const interests = dbProfile.interests?.length ? dbProfile.interests : null;
 
-  // Tier progress — derived from total_score
-  const nextTierTarget = Math.max(1000, Math.ceil((totalScore + 1) / 1000) * 1000);
-  const tierProgressPct = Math.min(100, Math.round((totalScore / nextTierTarget) * 100));
-  const pointsToNextTier = Math.max(0, nextTierTarget - totalScore);
+  const knowledge = USER_PROFILE.knowledgeTree;
+  const badges = USER_PROFILE.badges;
+  const saved = savedItems;
+
+  const Stat = ({ n, l }: { n: number | string; l: string }) => (
+    <View style={styles.statTile}>
+      <Text style={styles.statTileNum}>{n}</Text>
+      <Text style={styles.statTileLabel}>{l}</Text>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
-      >
-       <EntranceView>
-        {/* Hero */}
-        <View style={styles.hero}>
-          <Text style={[TextStyles.overline, { marginBottom: Spacing.base }]}>YOUR STANDING</Text>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>
-              {(displayName ?? displayEmail ?? 'I').charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <Text style={[TextStyles.screenTitle, { marginTop: Spacing.base }]}>{displayName}</Text>
-          <Text style={styles.heroEmail}>{displayEmail}</Text>
-          <Text style={styles.heroJoined}>Member since {memberSince}</Text>
-          {dobFormatted ? (
-            <Text style={styles.heroDob}>Born {dobFormatted}</Text>
-          ) : null}
-          <Text style={[TextStyles.tagline, { marginTop: 12, marginBottom: Spacing.lg }]}>
-            Track your intellectual evolution.
-          </Text>
-
-          <Tappable
-            style={styles.editBtn}
-            onPress={() => router.push('/edit-profile')}
-          >
-            <Text style={styles.editBtnText}>Edit Profile</Text>
-          </Tappable>
-
-          <View style={styles.followRow}>
-            <View style={styles.followItem}>
-              <Text style={styles.followNumber}>{following}</Text>
-              <Text style={styles.followLabel}>Following</Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+        <EntranceView>
+          {/* Hero */}
+          <View style={styles.hero}>
+            <LinearGradient colors={[Colors.gold, Colors.primary, Colors.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatarRing}>
+              <View style={styles.avatarInner}><Text style={styles.avatarText}>{initial}</Text></View>
+            </LinearGradient>
+            <Text style={styles.heroName}>{displayName}</Text>
+            <View style={styles.tierChip}>
+              <Text style={{ color: Colors.gold, fontSize: 11 }}>◆</Text>
+              <Text style={styles.tierChipText}>{tier}</Text>
             </View>
-            <View style={styles.followDivider} />
-            <View style={styles.followItem}>
-              <Text style={styles.followNumber}>{followers}</Text>
-              <Text style={styles.followLabel}>Followers</Text>
+            <Text style={styles.handle}>{handle} · Member № 0042</Text>
+            <Text style={styles.bio}>{bio}</Text>
+            <View style={styles.followRow}>
+              <Text style={styles.followItem}><Text style={styles.followNum}>{following}</Text> <Text style={styles.followLabel}>Following</Text></Text>
+              <View style={styles.followDivider} />
+              <Text style={styles.followItem}><Text style={styles.followNum}>{followers}</Text> <Text style={styles.followLabel}>Followers</Text></Text>
+              <View style={styles.followDivider} />
+              <TouchableOpacity onPress={() => router.push('/edit-profile')}><Text style={styles.editLink}>Edit</Text></TouchableOpacity>
             </View>
           </View>
-        </View>
 
-        {/* Score card */}
-        <View style={styles.scoreCard}>
-          <View style={styles.scoreMain}>
-            <Text style={styles.scoreOverline}>CUMULATIVE SCORE</Text>
-            <Text style={TextStyles.displayNumber}>{totalScore.toLocaleString()}</Text>
-          </View>
-          <View style={styles.scoreDetails}>
-            <View style={styles.scoreDetail}>
-              <Text style={styles.scoreDetailNum}>{weeklyStreak}</Text>
-              <Text style={styles.scoreDetailLabel}>Day Streak</Text>
+          <View style={styles.body}>
+            {/* Membership card */}
+            <View style={styles.membershipCard}>
+              <View style={styles.membershipGlow} pointerEvents="none" />
+              <View style={styles.membershipTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.goldKicker, { marginBottom: 8 }]}>CUMULATIVE SCORE</Text>
+                  <Text style={styles.scoreBig}>{totalScore.toLocaleString()}</Text>
+                  <Text style={styles.toNext}>
+                    {maxed ? 'Top tier reached' : <>{pointsToNext.toLocaleString()} points to <Text style={{ color: Colors.gold, fontFamily: Fonts.sansSemibold }}>{nextTier}</Text></>}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'center' }}>
+                  <ProgressRing pct={tierPct} size={70} stroke={5} color={Colors.gold} />
+                  <Text style={[styles.faintKicker, { marginTop: 7 }]}>TO NEXT TIER</Text>
+                </View>
+              </View>
+              <View style={styles.statStrip}>
+                {([['Streak', `${streak}d`], ['Articles', articlesRead], ['Podcasts', podcasts], ['Books', books]] as [string, any][]).map(([l, n], i) => (
+                  <React.Fragment key={l}>
+                    {i > 0 ? <View style={styles.statStripDivider} /> : null}
+                    <View style={{ flex: 1, alignItems: 'center' }}>
+                      <Text style={styles.statStripNum}>{n}</Text>
+                      <Text style={styles.statStripLabel}>{l.toUpperCase()}</Text>
+                    </View>
+                  </React.Fragment>
+                ))}
+              </View>
             </View>
-            <View style={styles.scoreDetailDivider} />
-            <View style={styles.scoreDetail}>
-              <Text style={styles.scoreDetailNum}>{articlesRead}</Text>
-              <Text style={styles.scoreDetailLabel}>Articles</Text>
-            </View>
-            <View style={styles.scoreDetailDivider} />
-            <View style={styles.scoreDetail}>
-              <Text style={styles.scoreDetailNum}>{podcastsListened}</Text>
-              <Text style={styles.scoreDetailLabel}>Podcasts</Text>
-            </View>
-          </View>
-        </View>
 
-        {/* Level */}
-        <View style={styles.levelCard}>
-          <View style={styles.levelHeader}>
-            <View>
-              <Text style={styles.levelOverline}>CURRENT TIER</Text>
-              <Text style={styles.levelTitle}>{deriveTier(totalScore)}</Text>
-            </View>
-            <Text style={styles.levelNextText}>
-              {pointsToNextTier === 0 ? 'Max tier' : `${pointsToNextTier.toLocaleString()} points to next tier`}
-            </Text>
-          </View>
-          <View style={styles.levelBar}>
-            <View style={[styles.levelBarFill, { width: `${tierProgressPct}%` }]} />
-          </View>
-          <View style={styles.levelMarkers}>
-            <Text style={styles.levelMarkerText}>{totalScore.toLocaleString()}</Text>
-            <Text style={styles.levelMarkerText}>{nextTierTarget.toLocaleString()}</Text>
-          </View>
-        </View>
-
-        {/* Section tabs */}
-        <View style={styles.sectionTabs}>
-          {[
-            { key: 'stats', label: 'Statistics' },
-            { key: 'knowledge', label: 'Knowledge' },
-            { key: 'saved', label: `Saved${savedItems.length ? ` · ${savedItems.length}` : ''}` },
-          ].map(tab => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.sectionTab, activeSection === tab.key && styles.sectionTabActive]}
-              onPress={() => setActiveSection(tab.key as any)}
-            >
-              <Text style={[styles.sectionTabText, activeSection === tab.key && styles.sectionTabTextActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {activeSection === 'stats' && (
-          <View style={styles.section}>
-            <View style={styles.statsGrid}>
-              {[
-                { value: articlesRead, label: 'Articles Consumed', onPress: () => router.push('/reading-history') },
-                { value: podcastsListened, label: 'Podcasts Engaged' },
-                { value: booksCompleted, label: 'Books Completed' },
-                { value: plansCompleted, label: 'Plans Executed' },
-              ].map(stat => (
-                <Tappable
-                  key={stat.label}
-                  onPress={stat.onPress ?? (() => {})}
-                  style={styles.statCard}
-                >
-                  <Text style={TextStyles.statNumberLarge}>{stat.value}</Text>
-                  <Text style={[TextStyles.statLabel, { textAlign: 'center', marginTop: 4 }]}>{stat.label}</Text>
-                </Tappable>
+            {/* Tabs */}
+            <View style={styles.tabs}>
+              {([['stats', 'Overview'], ['knowledge', 'Knowledge'], ['saved', `Saved · ${saved.length}`]] as [typeof tab, string][]).map(([k, l]) => (
+                <TouchableOpacity key={k} onPress={() => setTab(k)} style={[styles.tab, tab === k && styles.tabActive]}>
+                  <Text style={[styles.tabText, tab === k && styles.tabTextActive]}>{l}</Text>
+                </TouchableOpacity>
               ))}
             </View>
 
-            <View style={styles.interestsCard}>
-              <Text style={styles.interestsOverline}>DOMAINS OF INTEREST</Text>
-              {userInterests ? (
-                <View style={styles.interestsList}>
-                  {userInterests.map(interest => (
-                    <View key={interest} style={styles.interestPill}>
-                      <Text style={styles.interestText}>{interest}</Text>
+            {tab === 'stats' ? (
+              <View style={{ gap: 14 }}>
+                <View style={[styles.card, { padding: Spacing.lg }]}>
+                  <Text style={[styles.faintKicker, { marginBottom: 12 }]}>DOMAINS OF INTEREST</Text>
+                  {interests ? (
+                    <View style={styles.pillWrap}>
+                      {interests.map(i => <View key={i} style={styles.interestPill}><Text style={styles.interestText}>{i}</Text></View>)}
                     </View>
-                  ))}
+                  ) : (
+                    <Text style={styles.emptyInline}>No interests selected yet. Edit your profile to personalize your feed.</Text>
+                  )}
                 </View>
-              ) : (
-                <Text style={styles.interestEmpty}>
-                  No interests selected yet. Complete onboarding to personalize your feed.
-                </Text>
-              )}
-            </View>
-          </View>
-        )}
-
-        {activeSection === 'knowledge' && (
-          <View style={styles.section}>
-            <Text style={TextStyles.sectionTitle}>Your Knowledge Tree</Text>
-            <Text style={[TextStyles.tagline, { marginTop: 4 }]}>
-              An evolving map of your intellectual depth.
-            </Text>
-            <TouchableOpacity style={styles.sectionEmpty} onPress={() => router.push('/tree')} activeOpacity={0.85}>
-              <Text style={TextStyles.emptyTitle}>Open your canopy</Text>
-              <Text style={[TextStyles.emptyDescription, { textAlign: 'center' }]}>
-                A radial view of every domain you've engaged with. Tap to enter.
-              </Text>
-              <View style={styles.openTreeBtn}>
-                <Text style={TextStyles.buttonSecondary}>Open tree  →</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <Stat n={plansCompleted} l="PLANS EXECUTED" />
+                  <Stat n={books} l="BOOKS COMPLETED" />
+                </View>
+                <View style={[styles.card, { padding: Spacing.lg }]}>
+                  <Text style={[styles.faintKicker, { marginBottom: 14 }]}>ACHIEVEMENTS</Text>
+                  <View style={styles.badgeGrid}>
+                    {badges.map(b => (
+                      <View key={b.id} style={styles.badge}>
+                        <Text style={styles.badgeIcon}>{b.icon}</Text>
+                        <Text style={styles.badgeName}>{b.name}</Text>
+                        <Text style={styles.badgeDesc}>{b.description}</Text>
+                        <Text style={styles.badgeDate}>{b.unlockedAt?.toUpperCase()}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
               </View>
-            </TouchableOpacity>
-          </View>
-        )}
+            ) : null}
 
-        {activeSection === 'saved' && (
-          <View style={styles.section}>
-            <Text style={TextStyles.sectionTitle}>Your library</Text>
-            <Text style={[TextStyles.tagline, { marginTop: 4 }]}>
-              Everything you've marked with a star. Each save adds ten points to your score.
-            </Text>
-
-            {savedLoading && savedItems.length === 0 ? (
-              <View style={[styles.sectionEmpty, { borderStyle: 'solid' }]}>
-                <ActivityIndicator color={Colors.primary} />
-              </View>
-            ) : savedItems.length === 0 ? (
-              <View style={styles.sectionEmpty}>
-                <Text style={TextStyles.emptyTitle}>Nothing saved yet</Text>
-                <Text style={[TextStyles.emptyDescription, { textAlign: 'center' }]}>
-                  Tap the star on any piece in the feed to file it here.
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.savedList}>
-                {savedItems.map(item => (
-                  <Tappable
-                    key={item.id}
-                    style={styles.savedRow}
-                    onPress={() => router.push({ pathname: '/article/[id]', params: { id: item.id } })}
-                  >
-                    {item.image ? (
-                      <Image source={{ uri: item.image }} style={styles.savedThumb} />
-                    ) : (
-                      <View style={[styles.savedThumb, { backgroundColor: Colors.surfaceMuted }]} />
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={[TextStyles.kicker, { color: item.categoryColor, fontSize: 9 }]}>
-                        {item.category}
-                      </Text>
-                      <Text style={styles.savedTitle} numberOfLines={2}>{item.title}</Text>
-                      <Text style={TextStyles.meta}>
-                        {item.source} · {item.readTime} min
-                      </Text>
-                    </View>
-                  </Tappable>
+            {tab === 'knowledge' ? (
+              <View style={{ gap: 14 }}>
+                <View>
+                  <Text style={styles.sectionTitle}>Cognitive Map</Text>
+                  <Text style={styles.sectionSub}>A living map of where your attention compounds.</Text>
+                </View>
+                <View style={[styles.card, styles.cardGlow, { padding: Spacing.lg, alignItems: 'center' }]}>
+                  <KnowledgeRings domains={knowledge} />
+                </View>
+                <Text style={styles.faintKicker}>BY DOMAIN</Text>
+                {knowledge.map((n, i) => (
+                  <DomainRow key={n.id} node={n} color={DOMAIN_COLORS[i % DOMAIN_COLORS.length]} defaultOpen={i === 0} />
                 ))}
               </View>
-            )}
-          </View>
-        )}
+            ) : null}
 
-        {/* Settings */}
-        <View style={styles.settingsCard}>
-          {([
-            ...(dbProfile.is_admin
-              ? [{ label: 'Editorial Desk', onPress: () => router.push('/admin') }]
-              : []),
-            { label: 'Account Settings', onPress: () => {} },
-            { label: 'Notifications', onPress: () => {} },
-            { label: 'Refine Interests', onPress: () => router.push('/edit-profile') },
-          ]).map((item, i, arr) => (
-            <TouchableOpacity
-              key={item.label}
-              onPress={item.onPress}
-              style={[styles.settingsRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}
-            >
-              <Text style={styles.settingsLabel}>{item.label}</Text>
-              <Text style={styles.settingsChevron}>→</Text>
+            {tab === 'saved' ? (
+              <View style={{ gap: 14 }}>
+                <View>
+                  <Text style={styles.sectionTitle}>Your Library</Text>
+                  <Text style={styles.sectionSub}>Everything you've marked to return to.</Text>
+                </View>
+                {savedLoading && saved.length === 0 ? (
+                  <View style={styles.savedEmpty}><ActivityIndicator color={Colors.primary} /></View>
+                ) : saved.length === 0 ? (
+                  <View style={styles.savedEmpty}>
+                    <Text style={styles.savedEmptyTitle}>Nothing saved yet</Text>
+                    <Text style={styles.savedEmptyText}>Tap the bookmark on any piece to file it here.</Text>
+                  </View>
+                ) : (
+                  saved.map(item => (
+                    <Tappable key={item.id} style={styles.savedRow} onPress={() => router.push({ pathname: '/article/[id]', params: { id: item.id } })}>
+                      {item.image ? <Image source={{ uri: item.image }} style={styles.savedThumb} /> : <View style={[styles.savedThumb, { backgroundColor: Colors.surfaceMuted }]} />}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={[styles.savedCat, { color: getCategoryStyle(item.category).color }]}>{item.category.toUpperCase()}</Text>
+                        <Text style={styles.savedTitle} numberOfLines={2}>{item.title}</Text>
+                        <Text style={styles.savedMeta}>{item.source} · {item.readTime} min</Text>
+                      </View>
+                    </Tappable>
+                  ))
+                )}
+              </View>
+            ) : null}
+
+            {/* Settings */}
+            <View style={[styles.card, { overflow: 'hidden' }]}>
+              {([
+                ...(dbProfile.is_admin ? [{ label: 'Editorial Desk', onPress: () => router.push('/admin') }] : []),
+                { label: 'Account Settings', onPress: () => {} },
+                { label: 'Notifications', onPress: () => {} },
+                { label: 'Refine Interests', onPress: () => router.push('/edit-profile') },
+              ]).map((it, i, arr) => (
+                <TouchableOpacity key={it.label} onPress={it.onPress} style={[styles.settingsRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}>
+                  <Text style={styles.settingsLabel}>{it.label}</Text>
+                  <Text style={styles.settingsChev}>›</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity style={styles.signOutBtn} onPress={async () => { setSigningOut(true); await signOut(); }} disabled={signingOut} activeOpacity={0.7}>
+              <Text style={styles.signOutText}>{signingOut ? 'Signing out…' : 'Sign Out'}</Text>
             </TouchableOpacity>
-          ))}
-        </View>
 
-        <TouchableOpacity
-          style={styles.signOutBtn}
-          onPress={handleSignOut}
-          disabled={signingOut}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.signOutText}>
-            {signingOut ? 'Signing out…' : 'Sign Out'}
-          </Text>
-        </TouchableOpacity>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Sapience · Upgrade Your Cognitive Diet</Text>
-        </View>
-       </EntranceView>
+            <Text style={styles.footer}>Sapience<Text style={{ color: Colors.primary }}>.</Text> · Upgrade your cognitive diet</Text>
+          </View>
+        </EntranceView>
       </ScrollView>
     </SafeAreaView>
   );
@@ -377,615 +343,118 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, gap: 12 },
+  statusText: { fontFamily: Fonts.sans, fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  retryBtn: { marginTop: 12, paddingHorizontal: 20, paddingVertical: 12, borderRadius: Radius.md, backgroundColor: Colors.primary },
+  retryBtnText: { fontFamily: Fonts.sansSemibold, fontSize: 13, color: Colors.onPrimary, letterSpacing: 0.6 },
 
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.xl,
-    gap: 12,
-  },
-  statusText: {
-    fontSize: 14,
-    fontFamily: Fonts.sans,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-    textAlign: 'center',
-  },
-  retryBtn: {
-    marginTop: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.primary,
-  },
-  retryBtnText: {
-    fontSize: 13,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.white,
-    letterSpacing: 0.6,
-  },
+  body: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.base, gap: 14 },
 
-  heroDob: {
-    fontSize: 11,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    marginTop: 4,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  editBtn: {
-    marginTop: Spacing.base,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    backgroundColor: Colors.transparent,
-  },
-  editBtnText: {
-    fontSize: 12,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.primary,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
+  // Card shell
+  card: { backgroundColor: Colors.surface, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.border, ...Shadow.sm },
+  cardGlow: { borderColor: Colors.hairlineGold, ...Shadow.glow },
 
-  sectionEmpty: {
-    marginTop: 16,
-    padding: Spacing.lg,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    gap: 8,
-  },
-  openTreeBtn: {
-    marginTop: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryGlow,
-  },
-  savedList: {
-    marginTop: 16,
-  },
-  savedRow: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingVertical: 14,
-    borderTopWidth: 0.5,
-    borderColor: Colors.surfaceBorder,
-  },
-  savedThumb: {
-    width: 78,
-    height: 78,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.surfaceMuted,
-  },
-  savedTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 16,
-    lineHeight: 21,
-    color: Colors.textPrimary,
-    letterSpacing: -0.2,
-    marginVertical: 4,
-  },
-  sectionEmptyTitle: {
-    fontSize: 16,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-  },
-  sectionEmptyText: {
-    fontSize: 13,
-    fontFamily: Fonts.sans,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  goldKicker: { fontFamily: Fonts.sansSemibold, fontSize: 10.5, letterSpacing: 1.8, textTransform: 'uppercase', color: Colors.gold },
+  faintKicker: { fontFamily: Fonts.sansSemibold, fontSize: 9.5, letterSpacing: 1.4, textTransform: 'uppercase', color: Colors.textFaint },
 
+  // Hero
+  hero: { alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: 52, paddingBottom: Spacing.sm },
+  avatarRing: { padding: 4, borderRadius: 999 },
+  avatarInner: {
+    width: 86, height: 86, borderRadius: 43, backgroundColor: Colors.primary,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Colors.background,
+  },
+  avatarText: { fontFamily: Fonts.display, fontSize: 40, color: Colors.onPrimary },
+  heroName: { fontFamily: Fonts.display, fontSize: 24, letterSpacing: -0.4, color: Colors.textPrimary, marginTop: 14 },
+  tierChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8,
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999,
+    borderWidth: 1, borderColor: Colors.hairlineGold,
+  },
+  tierChipText: { fontFamily: Fonts.sansSemibold, fontSize: 10.5, letterSpacing: 0.8, textTransform: 'uppercase', color: Colors.gold },
+  handle: { fontFamily: Fonts.mono, fontSize: 11.5, color: Colors.textMuted, marginTop: 10 },
+  bio: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 20, color: Colors.textSecondary, marginTop: 10, textAlign: 'center', maxWidth: 300 },
+  followRow: { flexDirection: 'row', alignItems: 'center', gap: 20, marginTop: 16 },
+  followItem: { fontFamily: Fonts.sans },
+  followNum: { fontFamily: Fonts.display, fontSize: 18, color: Colors.textPrimary },
+  followLabel: { fontSize: 11, color: Colors.textMuted },
+  followDivider: { width: 1, height: 16, backgroundColor: Colors.border },
+  editLink: { fontFamily: Fonts.sansSemibold, fontSize: 12.5, color: Colors.primary },
 
-  hero: {
-    alignItems: 'center',
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.xl,
-    paddingHorizontal: Spacing.lg,
+  // Membership
+  membershipCard: {
+    position: 'relative', overflow: 'hidden', borderRadius: Radius.card,
+    borderWidth: 1, borderColor: Colors.hairlineGold, padding: Spacing.lg,
+    backgroundColor: Colors.surfaceAlt, ...Shadow.sm,
   },
-  kicker: {
-    fontSize: 10,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.primary,
-    letterSpacing: 3,
-    textTransform: 'uppercase',
-    marginBottom: Spacing.base,
-  },
-  avatarCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.hairlineGold,
-    marginBottom: Spacing.base,
-    ...Shadow.glow,
-  },
-  avatarText: {
-    fontSize: 42,
-    fontFamily: Fonts.display,
-    color: Colors.onPrimary,
-  },
-  heroName: {
-    fontSize: 30,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-    letterSpacing: -0.3,
-  },
-  heroEmail: {
-    fontSize: 13,
-    fontFamily: Fonts.sans,
-    color: Colors.textSecondary,
-    marginTop: 4,
-  },
-  heroJoined: {
-    fontSize: 11,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    marginTop: 8,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  tagline: {
-    fontFamily: Fonts.serifItalic,
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginTop: 12,
-    marginBottom: Spacing.lg,
-  },
-  followRow: {
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.base,
-    paddingHorizontal: Spacing.xl,
-    gap: 32,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadow.sm,
-  },
-  followItem: { alignItems: 'center' },
-  followNumber: {
-    fontSize: 22,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-  },
-  followLabel: {
-    fontSize: 10,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    marginTop: 4,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  followDivider: { width: 1, backgroundColor: Colors.surfaceBorder },
+  membershipGlow: { position: 'absolute', top: -40, right: -40, width: 130, height: 130, borderRadius: 999, backgroundColor: Colors.primarySoftStrong },
+  membershipTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  scoreBig: { fontFamily: Fonts.display, fontSize: 42, color: Colors.primary, letterSpacing: -1, lineHeight: 44 },
+  toNext: { fontFamily: Fonts.sans, fontSize: 12, color: Colors.textMuted, marginTop: 8 },
+  statStrip: { flexDirection: 'row', marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: Colors.border },
+  statStripDivider: { width: 1, backgroundColor: Colors.border },
+  statStripNum: { fontFamily: Fonts.display, fontSize: 17, color: Colors.textPrimary },
+  statStripLabel: { fontFamily: Fonts.mono, fontSize: 8.5, letterSpacing: 0.6, color: Colors.textMuted, marginTop: 4 },
 
-  // Score
-  scoreCard: {
-    backgroundColor: Colors.surface,
-    marginHorizontal: Spacing.lg,
-    borderRadius: Radius.card,
-    padding: Spacing.lg,
-    marginBottom: Spacing.base,
-    borderWidth: 1,
-    borderColor: Colors.hairlineGold,
-    ...Shadow.glow,
-  },
-  scoreMain: {
-    alignItems: 'center',
-    paddingBottom: Spacing.base,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceBorder,
-  },
-  scoreOverline: {
-    fontSize: 9,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.primary,
-    letterSpacing: 2.5,
-    marginBottom: 6,
-  },
-  scoreBig: {
-    fontSize: 48,
-    fontFamily: Fonts.serif,
-    color: Colors.primary,
-    letterSpacing: -1,
-  },
-  scoreDetails: {
-    flexDirection: 'row',
-    paddingTop: Spacing.base,
-  },
-  scoreDetail: { flex: 1, alignItems: 'center' },
-  scoreDetailNum: {
-    fontSize: 18,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-  },
-  scoreDetailLabel: {
-    fontSize: 10,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    marginTop: 4,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  scoreDetailDivider: { width: 1, backgroundColor: Colors.surfaceBorder },
+  // Tabs
+  tabs: { flexDirection: 'row', gap: 8 },
+  tab: { flex: 1, paddingVertical: 10, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
+  tabActive: { borderColor: Colors.primary, backgroundColor: Colors.primarySoft },
+  tabText: { fontFamily: Fonts.sansMedium, fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase', color: Colors.textSecondary },
+  tabTextActive: { color: Colors.primary, fontFamily: Fonts.sansSemibold },
 
-  // Level
-  levelCard: {
-    backgroundColor: Colors.surface,
-    marginHorizontal: Spacing.lg,
-    borderRadius: Radius.card,
-    padding: Spacing.lg,
-    marginBottom: Spacing.base,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadow.sm,
-  },
-  levelHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginBottom: 14,
-  },
-  levelOverline: {
-    fontSize: 9,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.primary,
-    letterSpacing: 2,
-    marginBottom: 4,
-  },
-  levelTitle: {
-    fontSize: 20,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-  },
-  levelNextText: {
-    fontSize: 11,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-  },
-  levelBar: {
-    height: 3,
-    backgroundColor: Colors.surfaceBorder,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  levelBarFill: {
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: Colors.primary,
-  },
-  levelMarkers: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  levelMarkerText: {
-    fontSize: 10,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    letterSpacing: 0.5,
-  },
+  // Overview
+  pillWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  interestPill: { paddingHorizontal: 13, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: Colors.border },
+  interestText: { fontFamily: Fonts.sansMedium, fontSize: 12, color: Colors.textPrimary },
+  emptyInline: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19, color: Colors.textMuted },
+  statTile: { flex: 1, padding: Spacing.base, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface, alignItems: 'center', ...Shadow.sm },
+  statTileNum: { fontFamily: Fonts.display, fontSize: 28, color: Colors.primary, letterSpacing: -0.6, lineHeight: 30 },
+  statTileLabel: { fontFamily: Fonts.mono, fontSize: 9.5, letterSpacing: 1, color: Colors.textMuted, marginTop: 8 },
+  badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  badge: { width: '47%', padding: Spacing.base, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.hairlineGold, alignItems: 'center' },
+  badgeIcon: { fontSize: 26, color: Colors.gold },
+  badgeName: { fontFamily: Fonts.display, fontSize: 13, color: Colors.textPrimary, marginTop: 6, textAlign: 'center' },
+  badgeDesc: { fontFamily: Fonts.sans, fontSize: 10.5, lineHeight: 15, color: Colors.textMuted, marginTop: 3, textAlign: 'center' },
+  badgeDate: { fontFamily: Fonts.mono, fontSize: 8.5, letterSpacing: 1, color: Colors.gold, marginTop: 6 },
 
-  sectionTabs: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.base,
-    gap: 8,
-  },
-  sectionTab: {
-    flex: 1,
-    paddingVertical: 11,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.borderStrong,
-    alignItems: 'center',
-  },
-  sectionTabActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary,
-  },
-  sectionTabText: {
-    fontSize: 11,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textSecondary,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  sectionTabTextActive: {
-    color: Colors.onPrimary,
-    fontFamily: Fonts.sansSemibold,
-  },
+  // Section titles
+  sectionTitle: { fontFamily: Fonts.display, fontSize: 22, letterSpacing: -0.4, color: Colors.textPrimary },
+  sectionSub: { fontFamily: Fonts.sans, fontSize: 13, color: Colors.textMuted, marginTop: 4 },
 
-  section: {
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-    letterSpacing: -0.3,
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    fontFamily: Fonts.serifItalic,
-    color: Colors.textSecondary,
-    marginTop: 4,
-  },
+  // Knowledge rings
+  ringIndex: { fontFamily: Fonts.display, fontSize: 34, letterSpacing: -0.8, color: Colors.textPrimary, lineHeight: 36 },
+  ringIndexLabel: { fontFamily: Fonts.mono, fontSize: 8.5, letterSpacing: 1.5, color: Colors.textMuted, marginTop: 3 },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 18, width: '100%' },
+  legendRow: { width: '50%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+  legendDot: { width: 9, height: 9, borderRadius: 5 },
+  legendLabel: { flex: 1, fontFamily: Fonts.sans, fontSize: 11.5, color: Colors.textSecondary },
+  legendScore: { fontFamily: Fonts.mono, fontSize: 11.5, color: Colors.textPrimary },
 
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  statCard: {
-    width: '47%',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.card,
-    padding: Spacing.lg,
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadow.sm,
-  },
-  statValue: {
-    fontSize: 36,
-    fontFamily: Fonts.serif,
-    color: Colors.primary,
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textMuted,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    textAlign: 'center',
-  },
+  // Domain rows
+  domainLabel: { fontFamily: Fonts.display, fontSize: 16.5, letterSpacing: -0.2, color: Colors.textPrimary },
+  domainSub: { fontFamily: Fonts.sans, fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  chev: { fontSize: 18, color: Colors.textMuted },
+  domainChildren: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: Colors.border, gap: 12 },
+  domainChildHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  domainChildLabel: { fontFamily: Fonts.sansMedium, fontSize: 12.5, color: Colors.textSecondary },
+  domainChildScore: { fontFamily: Fonts.mono, fontSize: 12 },
 
-  interestsCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.card,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadow.sm,
-  },
-  interestsOverline: {
-    fontSize: 10,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.primary,
-    letterSpacing: 2,
-    marginBottom: 14,
-  },
-  interestsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  interestPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-  },
-  interestText: {
-    fontSize: 11,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textPrimary,
-    letterSpacing: 0.5,
-  },
-  interestEmpty: {
-    fontSize: 13,
-    fontFamily: Fonts.serifItalic,
-    color: Colors.textMuted,
-    lineHeight: 20,
-  },
+  // Saved
+  savedEmpty: { padding: 40, alignItems: 'center', gap: 6, borderWidth: 1, borderColor: Colors.border, borderStyle: 'dashed', borderRadius: Radius.card },
+  savedEmptyTitle: { fontFamily: Fonts.display, fontSize: 16, color: Colors.textPrimary },
+  savedEmptyText: { fontFamily: Fonts.sans, fontSize: 12.5, color: Colors.textMuted, textAlign: 'center' },
+  savedRow: { flexDirection: 'row', gap: 13, paddingVertical: 12, borderTopWidth: 1, borderTopColor: Colors.border },
+  savedThumb: { width: 70, height: 70, borderRadius: Radius.lg, backgroundColor: Colors.surfaceMuted },
+  savedCat: { fontFamily: Fonts.sansSemibold, fontSize: 9.5, letterSpacing: 0.6 },
+  savedTitle: { fontFamily: Fonts.display, fontSize: 15, lineHeight: 18, color: Colors.textPrimary, marginVertical: 3 },
+  savedMeta: { fontFamily: Fonts.sans, fontSize: 11, color: Colors.textMuted },
 
-  knowledgeNode: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-  },
-  knowledgeNodeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  knowledgeNodeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  knowledgeNodeLabel: {
-    fontSize: 18,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-    letterSpacing: -0.2,
-  },
-  knowledgeNodeScore: {
-    fontSize: 18,
-    fontFamily: Fonts.serif,
-  },
-  knowledgeBar: {
-    height: 3,
-    backgroundColor: Colors.background,
-    borderRadius: 2,
-    marginTop: 10,
-    overflow: 'hidden',
-  },
-  knowledgeBarFill: { height: 3, borderRadius: 2 },
-  expandChevron: {
-    fontSize: 22,
-    fontFamily: Fonts.sansBold,
-    color: Colors.primary,
-  },
-  knowledgeChildren: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: Colors.surfaceBorder,
-    gap: 14,
-  },
-  knowledgeChildRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  knowledgeChildHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  knowledgeChildLabel: {
-    fontSize: 13,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textSecondary,
-    letterSpacing: 0.2,
-  },
-  knowledgeChildScore: {
-    fontSize: 13,
-    fontFamily: Fonts.sansSemibold,
-  },
-
-  badgesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 16,
-  },
-  badgeCard: {
-    width: '47%',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-  },
-  badgeCardLocked: {
-    backgroundColor: Colors.transparent,
-    borderStyle: 'dashed',
-  },
-  badgeIcon: {
-    fontSize: 28,
-    color: Colors.primary,
-  },
-  badgeName: {
-    fontSize: 14,
-    fontFamily: Fonts.serif,
-    color: Colors.textPrimary,
-    textAlign: 'center',
-  },
-  badgeDesc: {
-    fontSize: 11,
-    fontFamily: Fonts.sans,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  badgeDate: {
-    fontSize: 9,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.primary,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginTop: 4,
-  },
-  badgeLockedLabel: {
-    fontSize: 9,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.textMuted,
-    letterSpacing: 2,
-    marginTop: 4,
-  },
-
-  settingsCard: {
-    backgroundColor: Colors.surface,
-    marginHorizontal: Spacing.lg,
-    borderRadius: Radius.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-    marginTop: Spacing.sm,
-    ...Shadow.sm,
-  },
-  settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.base,
-    paddingHorizontal: Spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceBorder,
-  },
-  settingsLabel: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.textPrimary,
-    letterSpacing: 0.2,
-  },
-  settingsChevron: {
-    fontSize: 16,
-    fontFamily: Fonts.sansMedium,
-    color: Colors.primary,
-  },
-  signOutBtn: {
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.base,
-    paddingVertical: 14,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    backgroundColor: Colors.surface,
-    alignItems: 'center',
-  },
-  signOutText: {
-    fontSize: 13,
-    fontFamily: Fonts.sansSemibold,
-    color: '#DC2626',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-
-  footer: {
-    alignItems: 'center',
-    paddingTop: Spacing.xl,
-    paddingHorizontal: Spacing.lg,
-  },
-  footerText: {
-    fontSize: 11,
-    fontFamily: Fonts.serifItalic,
-    color: Colors.textMuted,
-    letterSpacing: 0.5,
-  },
+  // Settings
+  settingsRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  settingsLabel: { flex: 1, fontFamily: Fonts.sansMedium, fontSize: 14, color: Colors.textPrimary },
+  settingsChev: { fontSize: 16, color: Colors.primary },
+  signOutBtn: { marginTop: 4, paddingVertical: 14, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface, alignItems: 'center' },
+  signOutText: { fontFamily: Fonts.sansSemibold, fontSize: 13, color: Colors.danger, letterSpacing: 1, textTransform: 'uppercase' },
+  footer: { fontFamily: Fonts.display, fontSize: 12, color: Colors.textFaint, textAlign: 'center', paddingVertical: 12 },
 });
