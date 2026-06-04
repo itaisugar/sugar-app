@@ -398,6 +398,38 @@ drop policy if exists "Users delete own leaves" on public.knowledge_leaves;
 create policy "Users delete own leaves" on public.knowledge_leaves
   for delete to authenticated using (auth.uid() = user_id);
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 10. BOOKMARKS — a private "read later" list.
+-- Distinct from saved_items: no score, no saves_count bump, never visible to
+-- other users. A personal reading queue.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.bookmarks (
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  content_id uuid not null references public.content_items(id) on delete cascade,
+  created_at timestamptz default now(),
+  primary key (user_id, content_id)
+);
+
+create index if not exists bookmarks_user_idx on public.bookmarks (user_id, created_at desc);
+create index if not exists bookmarks_content_idx on public.bookmarks (content_id);
+
+grant select, insert, delete on public.bookmarks to authenticated;
+grant all privileges on public.bookmarks to service_role;
+
+alter table public.bookmarks enable row level security;
+
+drop policy if exists "Users read own bookmarks" on public.bookmarks;
+create policy "Users read own bookmarks" on public.bookmarks
+  for select to authenticated using (auth.uid() = user_id);
+
+drop policy if exists "Users bookmark as themselves" on public.bookmarks;
+create policy "Users bookmark as themselves" on public.bookmarks
+  for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists "Users remove only their own bookmarks" on public.bookmarks;
+create policy "Users remove only their own bookmarks" on public.bookmarks
+  for delete to authenticated using (auth.uid() = user_id);
+
 -- ─── BACKFILL content_url for the seeded articles ────────────────────────────
 -- Safe to re-run. Updates each known article with a starting URL.
 -- Replace these with more specific article URLs anytime via SQL or Table Editor.
