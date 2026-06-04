@@ -17,6 +17,7 @@ import { fetchContentItem } from '../../lib/contentItem';
 import { FeedItem } from '../../lib/content';
 import { detectLinkKind, openExternal } from '../../lib/externalLinks';
 import { isItemSaved, saveItem, unsaveItem } from '../../lib/saved';
+import { isItemBookmarked, bookmarkItem, unbookmarkItem } from '../../lib/bookmarks';
 import { isItemRead, markAsRead, unmarkAsRead } from '../../lib/reads';
 import { addLeaf, removeLeaf, getLeafBranch } from '../../lib/knowledge';
 import { useProfile } from '../../lib/ProfileContext';
@@ -39,6 +40,8 @@ export default function ArticleReader() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarkBusy, setBookmarkBusy] = useState(false);
   const [read, setRead] = useState(false);
   const [readBusy, setReadBusy] = useState(false);
 
@@ -60,10 +63,11 @@ export default function ArticleReader() {
         const result = await fetchContentItem(id!);
         setArticle(result);
         if (id) {
-          const [s, b, r] = await Promise.all([isItemSaved(id), getLeafBranch(id), isItemRead(id)]);
+          const [s, b, r, bm] = await Promise.all([isItemSaved(id), getLeafBranch(id), isItemRead(id), isItemBookmarked(id)]);
           setSaved(s);
           setLeafBranch(b);
           setRead(r);
+          setBookmarked(bm);
         }
       } catch (e: any) {
         setError(e?.message ?? 'Could not load this piece.');
@@ -167,6 +171,21 @@ export default function ArticleReader() {
     }
   };
 
+  const toggleBookmark = async () => {
+    if (!id || bookmarkBusy) return;
+    const prev = bookmarked;
+    setBookmarked(!prev);
+    setBookmarkBusy(true);
+    try {
+      if (prev) await unbookmarkItem(id);
+      else await bookmarkItem(id);
+    } catch {
+      setBookmarked(prev);
+    } finally {
+      setBookmarkBusy(false);
+    }
+  };
+
   const translation = id ? getTranslation(id) : undefined;
   const showHebrew = hebrew && !!translation;
   const displayTitle = showHebrew ? translation!.title_he : article?.title ?? '';
@@ -241,7 +260,10 @@ export default function ArticleReader() {
         </TouchableOpacity>
         <Text style={TextStyles.overline}>Reader</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={toggleSave} disabled={saveBusy} style={[styles.iconBtn, saved && styles.iconBtnActive]}>
+          <TouchableOpacity onPress={toggleBookmark} disabled={bookmarkBusy} style={[styles.iconBtn, bookmarked && styles.iconBtnActive]} accessibilityLabel={bookmarked ? 'Remove from Read Later' : 'Add to Read Later'}>
+            <Text style={[styles.iconBtnText, bookmarked && { color: Colors.onPrimary }]}>{bookmarked ? '⚑' : '⚐'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={toggleSave} disabled={saveBusy} style={[styles.iconBtn, saved && styles.iconBtnActive]} accessibilityLabel={saved ? 'Unsave' : 'Save'}>
             <Text style={[styles.iconBtnText, saved && { color: Colors.onPrimary }]}>★</Text>
           </TouchableOpacity>
         </View>

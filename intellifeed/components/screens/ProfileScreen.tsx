@@ -318,6 +318,7 @@ export default function ProfileScreen() {
             <View style={[styles.card, { overflow: 'hidden' }]}>
               {([
                 ...(dbProfile.is_admin ? [{ label: 'Editorial Desk', onPress: () => router.push('/admin') }] : []),
+                { label: 'Read Later', onPress: () => router.push('/bookmarks') },
                 { label: 'Account Settings', onPress: () => {} },
                 { label: 'Notifications', onPress: () => {} },
                 { label: 'Refine Interests', onPress: () => router.push('/edit-profile') },
