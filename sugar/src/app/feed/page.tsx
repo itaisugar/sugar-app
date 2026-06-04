@@ -33,7 +33,7 @@ export default function FeedPage() {
 
   return (
     <>
-      <TopBar showLogo showSearch />
+      <TopBar showLogo showSearch showLanguage />
       <TopicChips selected={selectedTopic} onSelect={setSelectedTopic} />
       <div className="px-4 py-3 flex flex-col gap-3">
         {filtered.length === 0 ? (

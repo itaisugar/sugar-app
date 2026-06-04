@@ -2,11 +2,13 @@
 
 import { Bell, Search } from 'lucide-react';
 import Link from 'next/link';
+import LanguageMenu from './LanguageMenu';
 
 interface TopBarProps {
   title?: string;
   showLogo?: boolean;
   showSearch?: boolean;
+  showLanguage?: boolean;
   rightElement?: React.ReactNode;
 }
 
@@ -14,6 +16,7 @@ export default function TopBar({
   title,
   showLogo = false,
   showSearch = false,
+  showLanguage = false,
   rightElement,
 }: TopBarProps) {
   return (
@@ -55,15 +58,17 @@ export default function TopBar({
             <Search size={20} style={{ color: '#888888' }} />
           </button>
         )}
-        {rightElement || (
-          <button className="relative p-1 transition-opacity active:opacity-60">
-            <Bell size={20} style={{ color: '#888888' }} />
-            <span
-              className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full border-2"
-              style={{ backgroundColor: '#D48B2C', borderColor: '#0A0A0A' }}
-            />
-          </button>
-        )}
+        {rightElement ||
+          (!showLanguage && (
+            <button className="relative p-1 transition-opacity active:opacity-60">
+              <Bell size={20} style={{ color: '#888888' }} />
+              <span
+                className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full border-2"
+                style={{ backgroundColor: '#D48B2C', borderColor: '#0A0A0A' }}
+              />
+            </button>
+          ))}
+        {showLanguage && <LanguageMenu />}
       </div>
     </div>
   );
