@@ -47,6 +47,7 @@ const SOURCE_LABELS: Record<string, string> = {
 function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSave: () => void; onLike: () => void; lead?: boolean }) {
   const router = useRouter();
   const player = usePodcastPlayer();
+  const { profile } = useProfile();
   const { language, getTranslation, pending } = useLanguage();
   const translation = getTranslation(item.id);
   const isHebrew = language === 'he';
@@ -123,8 +124,22 @@ function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSa
 
   const categoryStyle = getCategoryStyle(item.category);
   const tint = categoryStyle.gradientEnd;
-  const isTrending = (item.trendingScore ?? 0) >= 90;
-  const readers = feedItemReaders(item);
+
+  // #2 — transparent "why this is in your feed", computed locally from the
+  // user's interests (no model call). Falls back to an honest "editor's pick".
+  const interests = profile?.interests ?? [];
+  const match =
+    interests.find(i => i.toLowerCase() === item.category.toLowerCase()) ??
+    interests.find(i => item.tags.some(t => t.toLowerCase() === i.toLowerCase()));
+  const reason = match
+    ? (isHebrew ? `נבחר כי בחרת ב${match}` : `Because you chose ${match}`)
+    : (isHebrew ? 'בחירת העורכים' : 'Editor’s pick');
+
+  // #1 — a self-relevant signal (effort to read) instead of social proof.
+  const complexity =
+    item.readTime <= 4 ? (isHebrew ? 'קריאה קצרה' : 'Quick read')
+    : item.readTime <= 8 ? (isHebrew ? 'בינוני' : 'Medium')
+    : (isHebrew ? 'קריאה עמוקה' : 'Deep read');
 
   const HeroOverlay = (
     <>
@@ -138,10 +153,10 @@ function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSa
       <View style={styles.heroOverlay}>
         <View style={styles.cardOverlayTop}>
           <CatTag category={item.category} onDark />
-          {isTrending ? <GoldBadge label="Trending" /> : <Text style={styles.timestampOverlay}>{item.timestamp}</Text>}
+          <Text style={styles.timestampOverlay}>{item.timestamp}</Text>
         </View>
         <View>
-          <Text style={[lead ? styles.cardTitleLead : styles.cardTitle, rtlText]} numberOfLines={lead ? 3 : 3}>{displayTitle}</Text>
+          <Text style={[lead ? styles.cardTitleLead : styles.cardTitle, rtlText]} numberOfLines={3}>{displayTitle}</Text>
           {isTranslating ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 }}>
               <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" />
@@ -150,14 +165,11 @@ function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSa
           ) : (
             <Text style={[styles.cardHookOverlay, rtlText]} numberOfLines={2}>{displayHook}</Text>
           )}
-          <View style={styles.heroMetaRow}>
-            <Text style={styles.sourceOverlay} numberOfLines={1}>{item.source} · {item.readTime} min read</Text>
-            {readers.length > 0 ? (
-              <View style={styles.socialProof}>
-                <MemberFaces faces={readers.map(r => r.charAt(0).toUpperCase())} size={20} ring="rgba(8,7,9,0.9)" onDark />
-                <Text style={styles.socialText}>{readers.length} you follow</Text>
-              </View>
-            ) : null}
+          <Text style={styles.sourceOverlay} numberOfLines={1}>{item.source} · {item.readTime} min · {complexity}</Text>
+          {/* transparent reason line */}
+          <View style={styles.reasonRow}>
+            <Text style={styles.reasonGlyph}>✦</Text>
+            <Text style={[styles.reasonText, rtlText]} numberOfLines={1}>{reason}</Text>
           </View>
         </View>
       </View>
@@ -1071,6 +1083,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(255,255,255,0.6)',
     flexShrink: 1,
+    marginTop: 10,
+  },
+  reasonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 5,
+  },
+  reasonGlyph: {
+    fontSize: 10,
+    color: Colors.gold,
+  },
+  reasonText: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 11,
+    color: 'rgba(205,168,106,0.9)',
   },
   heroMetaRow: {
     flexDirection: 'row',
