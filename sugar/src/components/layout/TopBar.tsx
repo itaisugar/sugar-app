@@ -58,16 +58,17 @@ export default function TopBar({
             <Search size={20} style={{ color: '#888888' }} />
           </button>
         )}
+        {rightElement ||
+          (!showLanguage && (
+            <button className="relative p-1 transition-opacity active:opacity-60">
+              <Bell size={20} style={{ color: '#888888' }} />
+              <span
+                className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full border-2"
+                style={{ backgroundColor: '#D48B2C', borderColor: '#0A0A0A' }}
+              />
+            </button>
+          ))}
         {showLanguage && <LanguageMenu />}
-        {rightElement || (
-          <button className="relative p-1 transition-opacity active:opacity-60">
-            <Bell size={20} style={{ color: '#888888' }} />
-            <span
-              className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full border-2"
-              style={{ backgroundColor: '#D48B2C', borderColor: '#0A0A0A' }}
-            />
-          </button>
-        )}
       </div>
     </div>
   );
