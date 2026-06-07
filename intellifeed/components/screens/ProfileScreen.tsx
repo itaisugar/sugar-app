@@ -188,7 +188,7 @@ export default function ProfileScreen() {
               <Text style={{ color: Colors.gold, fontSize: 11 }}>◆</Text>
               <Text style={styles.tierChipText}>{tier}</Text>
             </View>
-            <Text style={styles.handle}>{handle} · Member № 0042</Text>
+            <Text style={styles.handle}>{handle}</Text>
             <Text style={styles.bio}>{bio}</Text>
             <View style={styles.followRow}>
               <Text style={styles.followItem}><Text style={styles.followNum}>{following}</Text> <Text style={styles.followLabel}>Following</Text></Text>
