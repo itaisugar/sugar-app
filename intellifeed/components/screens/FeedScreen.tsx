@@ -1012,7 +1012,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: Radius.full,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.black,
   },
   streakText: {
     fontSize: 11,
