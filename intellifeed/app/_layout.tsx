@@ -55,7 +55,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
     if (profileLoading) return;
 
-    if (profile && !profile.onboarded) {
+    // A logged-in user who hasn't completed onboarding — including the brief
+    // window right after signup where the profile row exists but hasn't been
+    // fetched yet (profile === null) — must land on onboarding, not the feed.
+    if (!profile || !profile.onboarded) {
       if (!inOnboardingGroup) router.replace('/(onboarding)/welcome');
       return;
     }
