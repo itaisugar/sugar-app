@@ -18,7 +18,6 @@ import {
   Modal,
   Dimensions,
   Animated,
-  Easing,
 } from 'react-native';
 import Svg, { Circle, Ellipse, Line } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -481,53 +480,21 @@ export default function FeedScreen() {
   const quote = getDailyQuote();
   const player = usePodcastPlayer();
 
-  // The header tracks the scroll gesture directly (smooth + speed-matched): a
-  // listener moves a 0..topH "collapse" value in lockstep with the finger, then
-  // it snaps fully open/closed when scrolling stops.
+  // The header is tied directly to scroll position: fully shown at the top (when
+  // you can't scroll up further) and collapsing smoothly as you scroll down.
   const scrollY = useRef(new Animated.Value(0)).current;
-  const collapseY = useRef(new Animated.Value(0)).current; // 0 = open .. topH = collapsed
-  const offset = useRef(0);
-  const lastY = useRef(0);
   const [topH, setTopH] = useState(0);
-
-  useEffect(() => {
-    const id = scrollY.addListener(({ value }) => {
-      const max = topH;
-      if (!max) { lastY.current = value; return; }
-      const dy = value - lastY.current;
-      lastY.current = value;
-      let next = offset.current + dy;
-      if (next < 0) next = 0;
-      else if (next > max) next = max;
-      offset.current = next;
-      collapseY.setValue(next); // follow the finger → smooth, matches scroll speed
-    });
-    return () => scrollY.removeListener(id);
-  }, [scrollY, collapseY, topH]);
 
   const onFeedScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
     { useNativeDriver: false },
   );
 
-  const snapHeader = () => {
-    const max = topH;
-    if (!max) return;
-    const target = offset.current > max / 2 ? max : 0;
-    offset.current = target;
-    Animated.timing(collapseY, {
-      toValue: target,
-      duration: 180,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  };
-
   const collapsibleStyle = topH
     ? {
         overflow: 'hidden' as const,
-        height: collapseY.interpolate({ inputRange: [0, topH], outputRange: [topH, 0] }),
-        opacity: collapseY.interpolate({ inputRange: [0, topH], outputRange: [1, 0] }),
+        height: scrollY.interpolate({ inputRange: [0, topH], outputRange: [topH, 0], extrapolate: 'clamp' }),
+        opacity: scrollY.interpolate({ inputRange: [0, topH * 0.7], outputRange: [1, 0], extrapolate: 'clamp' }),
       }
     : { overflow: 'hidden' as const };
 
@@ -807,8 +774,6 @@ export default function FeedScreen() {
           contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 120, gap: 20 }}
           showsVerticalScrollIndicator={false}
           onScroll={onFeedScroll}
-          onScrollEndDrag={snapHeader}
-          onMomentumScrollEnd={snapHeader}
           scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
