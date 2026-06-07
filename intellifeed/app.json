@@ -7,15 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "intellifeed",
     "userInterfaceStyle": "light",
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#F8F9FA"
-      }
-    },
     "web": {
       "bundler": "metro",
       "output": "single",
