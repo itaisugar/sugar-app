@@ -700,7 +700,11 @@ export default function FeedScreen() {
             <GlobeIcon color={langMenuOpen ? Colors.primary : Colors.textSecondary} />
           </TouchableOpacity>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarPhoto} />
+            ) : (
+              <Text style={styles.avatarText}>{initial}</Text>
+            )}
           </View>
         </View>
       </View>
@@ -1083,6 +1087,11 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sansBold,
     fontSize: 14,
     color: Colors.white,
+  },
+  avatarPhoto: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
   },
 
   // ─── Search ──────────────────────────────────────────────────────────────

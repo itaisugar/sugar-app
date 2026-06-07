@@ -2,10 +2,13 @@ import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -14,6 +17,7 @@ import { Colors, Spacing, Radius, Fonts, Shadow, TextStyles } from '../constants
 import { Field, PrimaryButton, Banner } from '../components/auth/FormPrimitives';
 import { useAuth } from '../lib/AuthContext';
 import { useProfile } from '../lib/ProfileContext';
+import { pickAndUploadAvatar } from '../lib/avatar';
 import { INTEREST_OPTIONS } from '../constants/Interests';
 
 const DOB_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -30,6 +34,28 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+
+  const avatarInitial = (fullName || profile?.full_name || user?.email || '?')
+    .charAt(0)
+    .toUpperCase();
+
+  const onChangePhoto = async () => {
+    if (avatarBusy || !user) return;
+    setAvatarBusy(true);
+    setError(null);
+    try {
+      const url = await pickAndUploadAvatar(user.id);
+      if (url) {
+        await updateProfile({ avatar_url: url });
+        await refresh();
+      }
+    } catch (e: any) {
+      Alert.alert('Could not update photo', e?.message ?? 'Please try again.');
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
 
   const dirty = useMemo(() => {
     if (!profile) return false;
@@ -112,6 +138,36 @@ export default function EditProfileScreen() {
         >
           {error ? <Banner kind="error" message={error} /> : null}
           {success ? <Banner kind="success" message="Profile saved." /> : null}
+
+          {/* Profile photo */}
+          <View style={[styles.card, { alignItems: 'center' }]}>
+            <TouchableOpacity
+              onPress={onChangePhoto}
+              activeOpacity={0.85}
+              disabled={avatarBusy}
+              style={styles.avatarWrap}
+            >
+              {profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImg} />
+              ) : (
+                <View style={[styles.avatarImg, styles.avatarFallback]}>
+                  <Text style={styles.avatarInitial}>{avatarInitial}</Text>
+                </View>
+              )}
+              <View style={styles.avatarBadge}>
+                {avatarBusy ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Text style={styles.avatarBadgeGlyph}>＋</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onChangePhoto} disabled={avatarBusy} hitSlop={8}>
+              <Text style={styles.changePhoto}>
+                {avatarBusy ? 'Uploading…' : profile?.avatar_url ? 'Change photo' : 'Add a photo'}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Identity */}
           <View style={styles.card}>
@@ -240,6 +296,52 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
     ...Shadow.sm,
+  },
+  avatarWrap: {
+    width: 96,
+    height: 96,
+    marginBottom: 12,
+  },
+  avatarImg: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: Colors.surfaceMuted,
+  },
+  avatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+  },
+  avatarInitial: {
+    fontFamily: Fonts.display,
+    fontSize: 40,
+    color: Colors.onPrimary,
+  },
+  avatarBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.primary,
+    borderWidth: 2,
+    borderColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarBadgeGlyph: {
+    fontSize: 16,
+    color: Colors.white,
+    fontFamily: Fonts.sansMedium,
+    lineHeight: 18,
+  },
+  changePhoto: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 13,
+    color: Colors.primary,
+    letterSpacing: 0.3,
   },
   sectionLabel: {
     fontSize: 11,
