@@ -73,26 +73,30 @@ const SOURCE_LABELS: Record<string, string> = {
 // Turns a single article into a swipeable "post": a cover slide (image + title)
 // followed by readable text slides built from the hook + summary, then a CTA.
 
-// At most 3 content slides → cover + 3 + CTA = 5 slides max per article.
-const MAX_CONTENT_SLIDES = 3;
+// Group the article text into slides of up to 4 sentences each (with a char cap
+// so a slide always fits the Instagram-sized card). Cover + these + CTA.
+const MAX_SENTENCES_PER_SLIDE = 4;
+const MAX_CHARS_PER_SLIDE = 320;
+const MAX_CONTENT_SLIDES = 4;
 
-// A super-condensed teaser: the hook (lede) plus the first key sentences of the
-// summary, each as its own short slide. The full text lives in the article reader.
 function splitIntoSlides(lede: string | null, body: string | null): string[] {
-  const slides: string[] = [];
-  const ledeText = (lede ?? '').trim();
-  if (ledeText) slides.push(ledeText);
+  const text = [(lede ?? '').trim(), (body ?? '').trim()].filter(Boolean).join(' ').trim();
+  if (!text) return [];
+  const sentences = (text.match(/[^.!?…]+[.!?…]+/g) ?? [text]).map((s) => s.trim()).filter(Boolean);
 
-  const bodyText = (body ?? '').trim();
-  if (bodyText && bodyText !== ledeText) {
-    const sentences = (bodyText.match(/[^.!?…]+[.!?…]+/g) ?? [bodyText])
-      .map((s) => s.trim())
-      .filter(Boolean);
-    for (const s of sentences) {
-      if (slides.length >= MAX_CONTENT_SLIDES) break;
-      slides.push(s);
+  const slides: string[] = [];
+  let cur: string[] = [];
+  let curLen = 0;
+  for (const s of sentences) {
+    if (cur.length && (cur.length >= MAX_SENTENCES_PER_SLIDE || curLen + s.length > MAX_CHARS_PER_SLIDE)) {
+      slides.push(cur.join(' '));
+      cur = [];
+      curLen = 0;
     }
+    cur.push(s);
+    curLen += s.length + 1;
   }
+  if (cur.length) slides.push(cur.join(' '));
   return slides.slice(0, MAX_CONTENT_SLIDES);
 }
 
@@ -184,7 +188,7 @@ function ArticleCarousel({
 }) {
   const [idx, setIdx] = useState(0);
   const [w, setW] = useState(Dimensions.get('window').width - Spacing.lg * 2 - 2);
-  const height = lead ? 280 : 210;
+  const height = Math.round(w * 1.25); // Instagram-style 4:5 portrait
   const pages = slides.length + 2; // cover + content slides + CTA
 
   return (
@@ -1324,8 +1328,8 @@ const styles = StyleSheet.create({
   },
   slideText: {
     fontFamily: Fonts.sansMedium,
-    fontSize: 19,
-    lineHeight: 27,
+    fontSize: 18,
+    lineHeight: 26,
     color: '#fff',
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.5)',
