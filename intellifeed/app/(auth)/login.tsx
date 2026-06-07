@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { Link } from 'expo-router';
 import { AuthShell } from '../../components/auth/AuthShell';
 import { Field, PrimaryButton, Banner } from '../../components/auth/FormPrimitives';
 import { useAuth } from '../../lib/AuthContext';
 import { Colors, Fonts } from '../../constants/Theme';
 
 export default function LoginScreen() {
-  const router = useRouter();
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,9 +24,8 @@ export default function LoginScreen() {
     setLoading(false);
     if (error) {
       setError(error);
-    } else {
-      router.replace('/(tabs)');
     }
+    // On success, AuthGate routes to onboarding or the feed based on `onboarded`.
   };
 
   return (
