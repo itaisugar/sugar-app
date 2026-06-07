@@ -96,33 +96,57 @@ function splitIntoSlides(lede: string | null, body: string | null): string[] {
   return slides.slice(0, MAX_CONTENT_SLIDES);
 }
 
-function TextSlide({
-  text, tint, category, index, total, rtl,
-}: {
-  text: string; tint: string; category: string; index: number; total: number;
-  rtl?: { writingDirection: 'rtl'; textAlign: 'right' } | undefined;
-}) {
-  return (
-    <View style={styles.textSlide}>
+// Dimmed, blurred cover image behind a slide's text (falls back to a dark tint
+// gradient when the article has no image).
+function SlideBackdrop({ image, tint }: { image: string; tint: string }) {
+  if (!image) {
+    return (
       <LinearGradient
         colors={[tint + '26', Colors.surface, Colors.surface]}
         locations={[0, 0.55, 1]}
         style={StyleSheet.absoluteFillObject}
       />
+    );
+  }
+  return (
+    <>
+      <Image
+        source={{ uri: image }}
+        style={[StyleSheet.absoluteFillObject, { opacity: 0.5 }]}
+        blurRadius={18}
+        resizeMode="cover"
+      />
+      <LinearGradient
+        colors={['rgba(8,7,9,0.45)', 'rgba(8,7,9,0.80)']}
+        style={StyleSheet.absoluteFillObject}
+      />
+    </>
+  );
+}
+
+function TextSlide({
+  text, image, tint, category, index, total, rtl,
+}: {
+  text: string; image: string; tint: string; category: string; index: number; total: number;
+  rtl?: { writingDirection: 'rtl'; textAlign: 'right' } | undefined;
+}) {
+  return (
+    <View style={styles.textSlide}>
+      <SlideBackdrop image={image} tint={tint} />
       <View style={[styles.slideAccent, { backgroundColor: tint }]} />
-      <Text style={styles.textSlideOverline}>{category} · {index + 1}/{total}</Text>
-      <Text style={[styles.textSlideText, rtl]}>{text}</Text>
+      <Text style={[styles.textSlideOverline, image && styles.onImageOverline]}>{category} · {index + 1}/{total}</Text>
+      <Text style={[styles.textSlideText, image && styles.onImageText, rtl]}>{text}</Text>
     </View>
   );
 }
 
-function CtaSlide({ tint, source, readTime }: { tint: string; source: string; readTime: number }) {
+function CtaSlide({ image, tint, source, readTime }: { image: string; tint: string; source: string; readTime: number }) {
   return (
     <View style={styles.ctaSlide}>
-      <LinearGradient colors={[tint + '33', Colors.surfaceElevated]} style={StyleSheet.absoluteFillObject} />
+      <SlideBackdrop image={image} tint={tint} />
       <Text style={styles.ctaKicker}>{source}</Text>
-      <Text style={styles.ctaTitle}>Read the full piece</Text>
-      <Text style={styles.ctaSub}>{readTime} min · continue in the reader</Text>
+      <Text style={[styles.ctaTitle, image && styles.onImageText]}>Read the full piece</Text>
+      <Text style={[styles.ctaSub, image && styles.onImageSub]}>{readTime} min · continue in the reader</Text>
       <View style={styles.ctaBtn}><Text style={styles.ctaBtnText}>Open article →</Text></View>
     </View>
   );
@@ -175,13 +199,13 @@ function ArticleCarousel({
         {/* Content slides */}
         {slides.map((t, i) => (
           <Pressable key={i} onPress={onOpen} style={{ width: w, height }}>
-            <TextSlide text={t} tint={tint} category={category} index={i} total={slides.length} rtl={rtl} />
+            <TextSlide text={t} image={image} tint={tint} category={category} index={i} total={slides.length} rtl={rtl} />
           </Pressable>
         ))}
 
         {/* CTA */}
         <Pressable onPress={onOpen} style={{ width: w, height }}>
-          <CtaSlide tint={tint} source={source} readTime={readTime} />
+          <CtaSlide image={image} tint={tint} source={source} readTime={readTime} />
         </Pressable>
       </ScrollView>
 
@@ -1297,6 +1321,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: Colors.textPrimary,
+  },
+  // Lighter variants for text sitting over the dimmed cover image.
+  onImageOverline: {
+    color: 'rgba(255,255,255,0.78)',
+  },
+  onImageText: {
+    color: '#fff',
+  },
+  onImageSub: {
+    color: 'rgba(255,255,255,0.82)',
   },
   ctaSlide: {
     flex: 1,
