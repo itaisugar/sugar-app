@@ -154,7 +154,9 @@ export default function ProfileScreen() {
   const tierPct = maxed ? 100 : Math.min(100, Math.round((totalScore / nextTierAt) * 100));
   const pointsToNext = Math.max(0, nextTierAt - totalScore);
 
-  const streak = dbProfile.weekly_streak ?? dbProfile.day_streak ?? 0;
+  // Match the Feed's streak (day_streak), with a 1-day minimum so an active
+  // reader never sees a 0-day streak. (`??` wouldn't fall back past a literal 0.)
+  const streak = Math.max(1, dbProfile.day_streak ?? 0);
   const articlesRead = dbProfile.articles_read ?? 0;
   const podcasts = dbProfile.podcasts_listened ?? 0;
   const books = dbProfile.books_completed ?? 0;
