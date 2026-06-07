@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Link } from 'expo-router';
 import { AuthShell } from '../../components/auth/AuthShell';
-import { Field, PrimaryButton, Banner } from '../../components/auth/FormPrimitives';
+import { Field, PrimaryButton, GoogleButton, Divider, Banner } from '../../components/auth/FormPrimitives';
 import { useAuth } from '../../lib/AuthContext';
 import { Colors, Fonts } from '../../constants/Theme';
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async () => {
@@ -26,6 +27,15 @@ export default function LoginScreen() {
       setError(error);
     }
     // On success, AuthGate routes to onboarding or the feed based on `onboarded`.
+  };
+
+  const onGoogle = async () => {
+    setError(null);
+    setGoogleLoading(true);
+    const { error } = await signInWithGoogle();
+    setGoogleLoading(false);
+    if (error) setError(error);
+    // On success, onAuthStateChange updates the session and AuthGate routes.
   };
 
   return (
@@ -71,6 +81,15 @@ export default function LoginScreen() {
       </View>
 
       <PrimaryButton label="Sign In" onPress={onSubmit} loading={loading} />
+
+      <Divider label="or" />
+
+      <GoogleButton
+        label="Continue with Google"
+        onPress={onGoogle}
+        loading={googleLoading}
+        disabled={loading}
+      />
     </AuthShell>
   );
 }
