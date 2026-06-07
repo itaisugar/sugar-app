@@ -73,8 +73,11 @@ const SOURCE_LABELS: Record<string, string> = {
 // Turns a single article into a swipeable "post": a cover slide (image + title)
 // followed by readable text slides built from the hook + summary, then a CTA.
 
-const SLIDE_TARGET = 200; // approx chars per text slide so it fits the card height
+// At most 3 content slides → cover + 3 + CTA = 5 slides max per article.
+const MAX_CONTENT_SLIDES = 3;
 
+// A super-condensed teaser: the hook (lede) plus the first key sentences of the
+// summary, each as its own short slide. The full text lives in the article reader.
 function splitIntoSlides(lede: string | null, body: string | null): string[] {
   const slides: string[] = [];
   const ledeText = (lede ?? '').trim();
@@ -82,19 +85,15 @@ function splitIntoSlides(lede: string | null, body: string | null): string[] {
 
   const bodyText = (body ?? '').trim();
   if (bodyText && bodyText !== ledeText) {
-    const sentences = bodyText.match(/[^.!?…]+[.!?…]*\s*/g) ?? [bodyText];
-    let cur = '';
+    const sentences = (bodyText.match(/[^.!?…]+[.!?…]+/g) ?? [bodyText])
+      .map((s) => s.trim())
+      .filter(Boolean);
     for (const s of sentences) {
-      if (cur && (cur + s).length > SLIDE_TARGET) {
-        slides.push(cur.trim());
-        cur = s;
-      } else {
-        cur += s;
-      }
+      if (slides.length >= MAX_CONTENT_SLIDES) break;
+      slides.push(s);
     }
-    if (cur.trim()) slides.push(cur.trim());
   }
-  return slides.filter(Boolean);
+  return slides.slice(0, MAX_CONTENT_SLIDES);
 }
 
 function TextSlide({
