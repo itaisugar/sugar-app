@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
-import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { Colors, Fonts } from '../../constants/Theme';
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
@@ -11,17 +11,6 @@ function IconFeed({ color }: { color: string }) {
       <Rect x="3" y="4" width="18" height="3" rx="1.5" fill={color} />
       <Rect x="3" y="10.5" width="12" height="3" rx="1.5" fill={color} opacity="0.6" />
       <Rect x="3" y="17" width="15" height="3" rx="1.5" fill={color} opacity="0.35" />
-    </Svg>
-  );
-}
-
-function IconPlan({ color }: { color: string }) {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Rect x="3" y="3" width="18" height="18" rx="3" stroke={color} strokeWidth="1.8" />
-      <Line x1="7" y1="9" x2="17" y2="9" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
-      <Line x1="7" y1="13" x2="14" y2="13" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
-      <Line x1="7" y1="17" x2="11" y2="17" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
     </Svg>
   );
 }
@@ -81,14 +70,6 @@ export default function TabLayout() {
         options={{
           tabBarIcon: ({ focused }) => (
             <TabButton focused={focused} label="Feed" icon={(c) => <IconFeed color={c} />} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="plan"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabButton focused={focused} label="Plan" icon={(c) => <IconPlan color={c} />} />
           ),
         }}
       />
