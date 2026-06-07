@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ import {
 import Svg, { Circle, Ellipse, Line } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../constants/Theme';
-import { Tappable, ZoomImage, Equalizer, CatTag, GoldBadge, MemberFaces, EntranceView } from '../ui';
+import { Equalizer, CatTag, GoldBadge, MemberFaces, EntranceView } from '../ui';
 import { detectLinkKind, ctaLabelFor } from '../../lib/externalLinks';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../lib/AuthContext';
@@ -69,6 +69,133 @@ const SOURCE_LABELS: Record<string, string> = {
   community: 'Notable in the Community',
 };
 
+// ─── Instagram-style article carousel ─────────────────────────────────────────
+// Turns a single article into a swipeable "post": a cover slide (image + title)
+// followed by readable text slides built from the hook + summary, then a CTA.
+
+const SLIDE_TARGET = 200; // approx chars per text slide so it fits the card height
+
+function splitIntoSlides(lede: string | null, body: string | null): string[] {
+  const slides: string[] = [];
+  const ledeText = (lede ?? '').trim();
+  if (ledeText) slides.push(ledeText);
+
+  const bodyText = (body ?? '').trim();
+  if (bodyText && bodyText !== ledeText) {
+    const sentences = bodyText.match(/[^.!?…]+[.!?…]*\s*/g) ?? [bodyText];
+    let cur = '';
+    for (const s of sentences) {
+      if (cur && (cur + s).length > SLIDE_TARGET) {
+        slides.push(cur.trim());
+        cur = s;
+      } else {
+        cur += s;
+      }
+    }
+    if (cur.trim()) slides.push(cur.trim());
+  }
+  return slides.filter(Boolean);
+}
+
+function TextSlide({
+  text, tint, category, index, total, rtl,
+}: {
+  text: string; tint: string; category: string; index: number; total: number;
+  rtl?: { writingDirection: 'rtl'; textAlign: 'right' } | undefined;
+}) {
+  return (
+    <View style={styles.textSlide}>
+      <LinearGradient
+        colors={[tint + '26', Colors.surface, Colors.surface]}
+        locations={[0, 0.55, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={[styles.slideAccent, { backgroundColor: tint }]} />
+      <Text style={styles.textSlideOverline}>{category} · {index + 1}/{total}</Text>
+      <Text style={[styles.textSlideText, rtl]}>{text}</Text>
+    </View>
+  );
+}
+
+function CtaSlide({ tint, source, readTime }: { tint: string; source: string; readTime: number }) {
+  return (
+    <View style={styles.ctaSlide}>
+      <LinearGradient colors={[tint + '33', Colors.surfaceElevated]} style={StyleSheet.absoluteFillObject} />
+      <Text style={styles.ctaKicker}>{source}</Text>
+      <Text style={styles.ctaTitle}>Read the full piece</Text>
+      <Text style={styles.ctaSub}>{readTime} min · continue in the reader</Text>
+      <View style={styles.ctaBtn}><Text style={styles.ctaBtnText}>Open article →</Text></View>
+    </View>
+  );
+}
+
+function ArticleCarousel({
+  lead, image, coverBg, cover, slides, tint, category, readTime, source, rtl, onOpen,
+}: {
+  lead: boolean;
+  image: string;
+  coverBg: string;
+  cover: React.ReactNode;
+  slides: string[];
+  tint: string;
+  category: string;
+  readTime: number;
+  source: string;
+  rtl?: { writingDirection: 'rtl'; textAlign: 'right' } | undefined;
+  onOpen: () => void;
+}) {
+  const [idx, setIdx] = useState(0);
+  const [w, setW] = useState(Dimensions.get('window').width - Spacing.lg * 2 - 2);
+  const height = lead ? 280 : 210;
+  const pages = slides.length + 2; // cover + content slides + CTA
+
+  return (
+    <View
+      onLayout={(e) => {
+        const lw = e.nativeEvent.layout.width;
+        if (lw && Math.abs(lw - w) > 1) setW(lw);
+      }}
+    >
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => setIdx(Math.round(e.nativeEvent.contentOffset.x / w))}
+      >
+        {/* Cover */}
+        <Pressable onPress={onOpen} style={{ width: w, height }}>
+          {image ? (
+            <ImageBackground source={{ uri: image }} style={{ width: '100%', height: '100%' }}>
+              {cover}
+            </ImageBackground>
+          ) : (
+            <View style={{ width: '100%', height: '100%', backgroundColor: coverBg }}>{cover}</View>
+          )}
+        </Pressable>
+
+        {/* Content slides */}
+        {slides.map((t, i) => (
+          <Pressable key={i} onPress={onOpen} style={{ width: w, height }}>
+            <TextSlide text={t} tint={tint} category={category} index={i} total={slides.length} rtl={rtl} />
+          </Pressable>
+        ))}
+
+        {/* CTA */}
+        <Pressable onPress={onOpen} style={{ width: w, height }}>
+          <CtaSlide tint={tint} source={source} readTime={readTime} />
+        </Pressable>
+      </ScrollView>
+
+      {/* Page dots */}
+      <View style={styles.dotsRow} pointerEvents="none">
+        {Array.from({ length: pages }).map((_, i) => (
+          <View key={i} style={[styles.cdot, i === idx && styles.cdotActive]} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSave: () => void; onLike: () => void; lead?: boolean }) {
   const router = useRouter();
   const player = usePodcastPlayer();
@@ -83,6 +210,10 @@ function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSa
       ? (translation.hook_he ?? translation.summary_he)
       : (item.hook ?? item.summary);
   const rtlText = isHebrew && translation ? ({ writingDirection: 'rtl' as const, textAlign: 'right' as const }) : undefined;
+  // Instagram-style slides: lede (hook) + the summary split into readable pages.
+  const ledeText = isHebrew && translation ? (translation.hook_he ?? null) : (item.hook ?? null);
+  const bodyText = isHebrew && translation ? translation.summary_he : item.summary;
+  const contentSlides = useMemo(() => splitIntoSlides(ledeText, bodyText), [ledeText, bodyText]);
   const isThisActive = player.isActive(item.id);
   const isThisPlaying = isThisActive && player.isPlaying;
   const [narrating, setNarrating] = useState(false);
@@ -203,18 +334,20 @@ function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSa
 
   return (
     <View style={[styles.card, lead && styles.cardLead]}>
-      {/* Hero — image or gradient, with text overlay */}
-      <Tappable onPress={openArticle}>
-        {item.image ? (
-          <ZoomImage source={{ uri: item.image }} style={[styles.cardHeroBg, lead && styles.cardHeroBgLead]}>
-            {HeroOverlay}
-          </ZoomImage>
-        ) : (
-          <View style={[styles.cardHeroBg, lead && styles.cardHeroBgLead, { backgroundColor: categoryStyle.gradientStart }]}>
-            {HeroOverlay}
-          </View>
-        )}
-      </Tappable>
+      {/* Hero carousel — Instagram-style: cover + swipeable content slides */}
+      <ArticleCarousel
+        lead={lead}
+        image={item.image}
+        coverBg={categoryStyle.gradientStart}
+        cover={HeroOverlay}
+        slides={contentSlides}
+        tint={tint}
+        category={item.category}
+        readTime={item.readTime}
+        source={item.source}
+        rtl={rtlText}
+        onOpen={openArticle}
+      />
 
       {/* Audio player — slim strip */}
       <TouchableOpacity
@@ -1117,6 +1250,93 @@ const styles = StyleSheet.create({
   },
   cardHeroBgLead: {
     height: 280,
+  },
+  // ─── Carousel (Instagram-style slides) ──────────────────────────────────────
+  dotsRow: {
+    position: 'absolute',
+    top: 10,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  cdot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  cdotActive: {
+    width: 16,
+    backgroundColor: '#fff',
+  },
+  textSlide: {
+    flex: 1,
+    padding: Spacing.lg,
+    paddingTop: Spacing.xl,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  slideAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+  },
+  textSlideOverline: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 10.5,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+    marginBottom: 10,
+  },
+  textSlideText: {
+    fontFamily: Fonts.sans,
+    fontSize: 16,
+    lineHeight: 24,
+    color: Colors.textPrimary,
+  },
+  ctaSlide: {
+    flex: 1,
+    padding: Spacing.lg,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  ctaKicker: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 10.5,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: Colors.primary,
+    marginBottom: 8,
+  },
+  ctaTitle: {
+    fontFamily: Fonts.display,
+    fontSize: 24,
+    letterSpacing: -0.4,
+    color: Colors.textPrimary,
+  },
+  ctaSub: {
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginTop: 8,
+  },
+  ctaBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primary,
+  },
+  ctaBtnText: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 14,
+    color: Colors.onPrimary,
   },
   // Full-bleed overlay: top row pinned top, headline block pinned bottom
   heroOverlay: {
