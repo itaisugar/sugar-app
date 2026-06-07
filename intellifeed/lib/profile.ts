@@ -15,7 +15,6 @@ export type Profile = {
   articles_read: number;
   podcasts_listened: number;
   books_completed: number;
-  plans_completed: number;
   following: number;
   followers: number;
   created_at: string;

@@ -160,7 +160,6 @@ export default function ProfileScreen() {
   const articlesRead = dbProfile.articles_read ?? 0;
   const podcasts = dbProfile.podcasts_listened ?? 0;
   const books = dbProfile.books_completed ?? 0;
-  const plansCompleted = dbProfile.plans_completed ?? 0;
   const following = dbProfile.following ?? 0;
   const followers = dbProfile.followers ?? 0;
   const interests = dbProfile.interests?.length ? dbProfile.interests : null;
@@ -252,7 +251,6 @@ export default function ProfileScreen() {
                   )}
                 </View>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <Stat n={plansCompleted} l="PLANS EXECUTED" />
                   <Stat n={books} l="BOOKS COMPLETED" />
                 </View>
                 <View style={[styles.card, { padding: Spacing.lg }]}>

@@ -254,13 +254,11 @@ function FeaturesStep() {
       <Text style={[TextStyles.kicker, styles.kickerSpace]}>What you can do</Text>
       <Text style={styles.bigTitle}>Everything in one place</Text>
       <Text style={[styles.lede, { marginBottom: Spacing.xl }]}>
-        Four spaces work together to turn reading into lasting knowledge.
+        Three spaces work together to turn reading into lasting knowledge.
       </Text>
 
       <FeatureRow icon={<IconFeed color={Colors.primary} />} title="Feed"
         body="A personalized stream plus a daily audio Briefing tuned to your interests." />
-      <FeatureRow icon={<IconPlan color={Colors.primary} />} title="Plan"
-        body="Turn what you read into structured learning plans and track your progress." />
       <FeatureRow icon={<IconClubs color={Colors.primary} />} title="Clubs"
         body="Join reading clubs, follow the discussion, and take on challenges together." />
       <FeatureRow icon={<IconProfile color={Colors.primary} />} title="Profile"
@@ -403,17 +401,6 @@ function IconFeed({ color }: { color: string }) {
       <Rect x="3" y="4" width="18" height="3" rx="1.5" fill={color} />
       <Rect x="3" y="10.5" width="12" height="3" rx="1.5" fill={color} opacity="0.6" />
       <Rect x="3" y="17" width="15" height="3" rx="1.5" fill={color} opacity="0.35" />
-    </Svg>
-  );
-}
-
-function IconPlan({ color }: { color: string }) {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Rect x="3" y="3" width="18" height="18" rx="3" stroke={color} strokeWidth="1.8" />
-      <Line x1="7" y1="9" x2="17" y2="9" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
-      <Line x1="7" y1="13" x2="14" y2="13" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
-      <Line x1="7" y1="17" x2="11" y2="17" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
     </Svg>
   );
 }
