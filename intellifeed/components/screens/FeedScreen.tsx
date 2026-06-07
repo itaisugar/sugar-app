@@ -96,28 +96,41 @@ function splitIntoSlides(lede: string | null, body: string | null): string[] {
   return slides.slice(0, MAX_CONTENT_SLIDES);
 }
 
-// Dimmed, blurred cover image behind a slide's text (falls back to a dark tint
-// gradient when the article has no image).
+// Bold any numeric tokens (prices, percentages) inside a slide line — mirrors the
+// "5,300 / 19,000" emphasis in the reference design.
+function renderEmphasis(text: string): React.ReactNode {
+  const out: React.ReactNode[] = [];
+  const regex = /(\d[\d.,]*\s?[%$₪]?)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let k = 0;
+  while ((m = regex.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    out.push(<Text key={k++} style={styles.slideBold}>{m[0]}</Text>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+// The sharp cover image with a bottom-weighted scrim so text sits over the
+// darker lower third (falls back to a tint gradient when there's no image).
 function SlideBackdrop({ image, tint }: { image: string; tint: string }) {
   if (!image) {
     return (
       <LinearGradient
-        colors={[tint + '26', Colors.surface, Colors.surface]}
-        locations={[0, 0.55, 1]}
+        colors={[Colors.surfaceElevated, Colors.surface, tint + '22']}
+        locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFillObject}
       />
     );
   }
   return (
     <>
-      <Image
-        source={{ uri: image }}
-        style={[StyleSheet.absoluteFillObject, { opacity: 0.5 }]}
-        blurRadius={18}
-        resizeMode="cover"
-      />
+      <Image source={{ uri: image }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
       <LinearGradient
-        colors={['rgba(8,7,9,0.45)', 'rgba(8,7,9,0.80)']}
+        colors={['rgba(8,7,9,0.06)', 'rgba(8,7,9,0.45)', 'rgba(8,7,9,0.93)']}
+        locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFillObject}
       />
     </>
@@ -125,29 +138,31 @@ function SlideBackdrop({ image, tint }: { image: string; tint: string }) {
 }
 
 function TextSlide({
-  text, image, tint, category, index, total, rtl,
+  text, image, tint, source, rtl,
 }: {
-  text: string; image: string; tint: string; category: string; index: number; total: number;
+  text: string; image: string; tint: string; source: string;
   rtl?: { writingDirection: 'rtl'; textAlign: 'right' } | undefined;
 }) {
   return (
-    <View style={styles.textSlide}>
+    <View style={styles.slide}>
       <SlideBackdrop image={image} tint={tint} />
-      <View style={[styles.slideAccent, { backgroundColor: tint }]} />
-      <Text style={[styles.textSlideOverline, image && styles.onImageOverline]}>{category} · {index + 1}/{total}</Text>
-      <Text style={[styles.textSlideText, image && styles.onImageText, rtl]}>{text}</Text>
+      <View style={styles.slideBottom}>
+        <Text style={[rtl, styles.slideText]}>{renderEmphasis(text)}</Text>
+        <Text style={styles.slideBrand}>{source}</Text>
+      </View>
     </View>
   );
 }
 
 function CtaSlide({ image, tint, source, readTime }: { image: string; tint: string; source: string; readTime: number }) {
   return (
-    <View style={styles.ctaSlide}>
+    <View style={styles.slide}>
       <SlideBackdrop image={image} tint={tint} />
-      <Text style={styles.ctaKicker}>{source}</Text>
-      <Text style={[styles.ctaTitle, image && styles.onImageText]}>Read the full piece</Text>
-      <Text style={[styles.ctaSub, image && styles.onImageSub]}>{readTime} min · continue in the reader</Text>
-      <View style={styles.ctaBtn}><Text style={styles.ctaBtnText}>Open article →</Text></View>
+      <View style={styles.slideBottom}>
+        <Text style={styles.ctaTitleC}>Read the full piece</Text>
+        <Text style={styles.ctaSubC}>{readTime} min · {source}</Text>
+        <View style={styles.ctaBtn}><Text style={styles.ctaBtnText}>Open article →</Text></View>
+      </View>
     </View>
   );
 }
@@ -199,7 +214,7 @@ function ArticleCarousel({
         {/* Content slides */}
         {slides.map((t, i) => (
           <Pressable key={i} onPress={onOpen} style={{ width: w, height }}>
-            <TextSlide text={t} image={image} tint={tint} category={category} index={i} total={slides.length} rtl={rtl} />
+            <TextSlide text={t} image={image} tint={tint} source={source} rtl={rtl} />
           </Pressable>
         ))}
 
@@ -350,6 +365,8 @@ function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSa
             <Text style={styles.reasonGlyph}>✦</Text>
             <Text style={[styles.reasonText, rtlText]} numberOfLines={1}>{reason}</Text>
           </View>
+          {/* swipe affordance — there are more slides to the side */}
+          <Text style={styles.swipeHint}>{isHebrew ? '‹‹‹ החליקו' : 'Swipe ›››'}</Text>
         </View>
       </View>
     </>
@@ -1294,6 +1311,56 @@ const styles = StyleSheet.create({
     width: 16,
     backgroundColor: '#fff',
   },
+  // CashFlow-style slides: sharp image, bottom-weighted scrim, centered text.
+  slide: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  slideBottom: {
+    padding: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    alignItems: 'center',
+  },
+  slideText: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 19,
+    lineHeight: 27,
+    color: '#fff',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  slideBold: {
+    fontFamily: Fonts.sansBold,
+    color: '#fff',
+  },
+  slideBrand: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 12,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 14,
+  },
+  ctaTitleC: {
+    fontFamily: Fonts.display,
+    fontSize: 24,
+    letterSpacing: -0.3,
+    color: '#fff',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  ctaSubC: {
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.82)',
+    textAlign: 'center',
+    marginTop: 6,
+  },
   textSlide: {
     flex: 1,
     padding: Spacing.lg,
@@ -1359,7 +1426,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   ctaBtn: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     marginTop: 16,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -1449,6 +1516,13 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sansMedium,
     fontSize: 11,
     color: 'rgba(205,168,106,0.9)',
+  },
+  swipeHint: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: Colors.gold,
+    marginTop: 10,
   },
   heroMetaRow: {
     flexDirection: 'row',

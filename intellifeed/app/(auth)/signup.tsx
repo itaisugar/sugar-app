@@ -2,16 +2,17 @@ import React, { useState } from 'react';
 import { Text, StyleSheet } from 'react-native';
 import { Link } from 'expo-router';
 import { AuthShell } from '../../components/auth/AuthShell';
-import { Field, PrimaryButton, Banner } from '../../components/auth/FormPrimitives';
+import { Field, PrimaryButton, GoogleButton, Divider, Banner } from '../../components/auth/FormPrimitives';
 import { useAuth } from '../../lib/AuthContext';
 import { Colors, Fonts } from '../../constants/Theme';
 
 export default function SignupScreen() {
-  const { signUp } = useAuth();
+  const { signUp, signInWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
@@ -45,6 +46,17 @@ export default function SignupScreen() {
       setInfo('Almost there — confirm your email to activate your account.');
     }
     // Otherwise a session is created; AuthGate routes the new user to onboarding.
+  };
+
+  const onGoogle = async () => {
+    setError(null);
+    setInfo(null);
+    setGoogleLoading(true);
+    const { error } = await signInWithGoogle();
+    setGoogleLoading(false);
+    if (error) setError(error);
+    // On success, onAuthStateChange updates the session and AuthGate routes a
+    // brand-new Google user to onboarding (no full_name / onboarded yet).
   };
 
   return (
@@ -94,6 +106,15 @@ export default function SignupScreen() {
       />
 
       <PrimaryButton label="Create Account" onPress={onSubmit} loading={loading} />
+
+      <Divider label="or" />
+
+      <GoogleButton
+        label="Sign up with Google"
+        onPress={onGoogle}
+        loading={googleLoading}
+        disabled={loading}
+      />
     </AuthShell>
   );
 }
