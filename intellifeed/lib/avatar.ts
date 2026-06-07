@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { cropAvatar } from './avatarCrop';
 
 // Web-only project: pick a file via the browser's native file dialog. No native
 // image-picker dependency needed (and supabase-js uploads a File/Blob directly
@@ -29,11 +30,17 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
   return `${data.publicUrl}?v=${Date.now()}`;
 }
 
-// Open the file dialog, upload the chosen image, and return the new public
-// avatar URL. Returns null if the user cancels without choosing a file.
+// Open the file dialog, let the user crop a circle out of the chosen photo, then
+// upload it and return the new public avatar URL. Returns null if the user
+// cancels at either the picker or the crop step.
 export async function pickAndUploadAvatar(userId: string): Promise<string | null> {
   const file = await pickImageFile();
   if (!file) return null;
   if (!file.type.startsWith('image/')) throw new Error('Please choose an image file.');
-  return uploadAvatar(userId, file);
+  // Crop + re-encode to a normalized 512x512 JPEG. Besides letting the user pick
+  // the exact circle, this is what makes phone photos work — HEIC/oversized
+  // camera files are converted into a clean JPEG the browser and CDN can render.
+  const cropped = await cropAvatar(file);
+  if (!cropped) return null;
+  return uploadAvatar(userId, cropped);
 }
