@@ -480,10 +480,34 @@ export default function FeedScreen() {
   const quote = getDailyQuote();
   const player = usePodcastPlayer();
 
-  // The header is tied directly to scroll position: fully shown at the top (when
-  // you can't scroll up further) and collapsing smoothly as you scroll down.
+  // Gesture-coupled header: height/opacity follow the scroll finger in BOTH
+  // directions, so the reveal/collapse always matches your scroll speed. Forced
+  // fully open at the very top.
   const scrollY = useRef(new Animated.Value(0)).current;
+  const collapseY = useRef(new Animated.Value(0)).current; // 0 = open .. topH = collapsed
+  const offset = useRef(0);
+  const lastY = useRef(0);
   const [topH, setTopH] = useState(0);
+
+  useEffect(() => {
+    const id = scrollY.addListener(({ value }) => {
+      const max = topH;
+      if (!max) { lastY.current = value; return; }
+      const dy = value - lastY.current;
+      lastY.current = value;
+      let next: number;
+      if (value <= 0) {
+        next = 0; // at the top → fully open
+      } else {
+        next = offset.current + dy;
+        if (next < 0) next = 0;
+        else if (next > max) next = max;
+      }
+      offset.current = next;
+      collapseY.setValue(next);
+    });
+    return () => scrollY.removeListener(id);
+  }, [scrollY, collapseY, topH]);
 
   const onFeedScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -493,8 +517,8 @@ export default function FeedScreen() {
   const collapsibleStyle = topH
     ? {
         overflow: 'hidden' as const,
-        height: scrollY.interpolate({ inputRange: [0, topH], outputRange: [topH, 0], extrapolate: 'clamp' }),
-        opacity: scrollY.interpolate({ inputRange: [0, topH * 0.7], outputRange: [1, 0], extrapolate: 'clamp' }),
+        height: collapseY.interpolate({ inputRange: [0, topH], outputRange: [topH, 0] }),
+        opacity: collapseY.interpolate({ inputRange: [0, topH], outputRange: [1, 0] }),
       }
     : { overflow: 'hidden' as const };
 
