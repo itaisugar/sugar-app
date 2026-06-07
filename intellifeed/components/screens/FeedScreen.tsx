@@ -17,6 +17,7 @@ import {
   Linking,
   Modal,
   Dimensions,
+  Animated,
 } from 'react-native';
 import Svg, { Circle, Ellipse, Line } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -726,7 +727,7 @@ export default function FeedScreen() {
       </Modal>
 
       <Animated.View
-        onLayout={(e) => {
+        onLayout={(e: { nativeEvent: { layout: { height: number } } }) => {
           const h = e.nativeEvent.layout.height;
           if (h && !topH) setTopH(h);
         }}
