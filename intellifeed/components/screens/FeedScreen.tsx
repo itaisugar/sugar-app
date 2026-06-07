@@ -479,6 +479,37 @@ export default function FeedScreen() {
   const quote = getDailyQuote();
   const player = usePodcastPlayer();
 
+  // Collapse the search + category chips while scrolling down; restore on scroll up.
+  const collapse = useRef(new Animated.Value(0)).current; // 0 = open, 1 = collapsed
+  const lastY = useRef(0);
+  const isCollapsed = useRef(false);
+  const [topH, setTopH] = useState(0);
+
+  const setCollapsed = (next: boolean) => {
+    if (isCollapsed.current === next) return;
+    isCollapsed.current = next;
+    Animated.timing(collapse, {
+      toValue: next ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false, // animating height
+    }).start();
+  };
+
+  const onFeedScroll = (e: { nativeEvent: { contentOffset: { y: number } } }) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const dy = y - lastY.current;
+    lastY.current = y;
+    if (y <= 4) setCollapsed(false);
+    else if (dy > 6) setCollapsed(true);
+    else if (dy < -6) setCollapsed(false);
+  };
+
+  const collapsibleStyle = {
+    overflow: 'hidden' as const,
+    height: topH ? collapse.interpolate({ inputRange: [0, 1], outputRange: [topH, 0] }) : undefined,
+    opacity: collapse.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+  };
+
   const briefingActive = !!briefing && player.isActive(briefing.trackId);
   const briefingPlaying = briefingActive && player.isPlaying;
 
@@ -694,36 +725,44 @@ export default function FeedScreen() {
         </Pressable>
       </Modal>
 
-      <TouchableOpacity
-        style={styles.searchContainer}
-        onPress={() => router.push('/search')}
-        activeOpacity={0.85}
+      <Animated.View
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          if (h && !topH) setTopH(h);
+        }}
+        style={collapsibleStyle}
       >
-        <Text style={styles.searchIcon}>⌕</Text>
-        <Text style={styles.searchPlaceholder}>
-          Readers, topics, articles…
-        </Text>
-      </TouchableOpacity>
-
-      <View style={styles.categoriesWrap}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: Spacing.lg, gap: 8, alignItems: 'center' }}
+        <TouchableOpacity
+          style={styles.searchContainer}
+          onPress={() => router.push('/search')}
+          activeOpacity={0.85}
         >
-          {CATEGORIES.map(cat => (
-            <TouchableOpacity
-              key={cat}
-              onPress={() => setSelectedCategory(cat)}
-              style={[styles.categoryChip, selectedCategory === cat && styles.categoryChipActive]}
-            >
-              <Text style={[styles.categoryChipText, selectedCategory === cat && styles.categoryChipTextActive]}>
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+          <Text style={styles.searchIcon}>⌕</Text>
+          <Text style={styles.searchPlaceholder}>
+            Readers, topics, articles…
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.categoriesWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: Spacing.lg, gap: 8, alignItems: 'center' }}
+          >
+            {CATEGORIES.map(cat => (
+              <TouchableOpacity
+                key={cat}
+                onPress={() => setSelectedCategory(cat)}
+                style={[styles.categoryChip, selectedCategory === cat && styles.categoryChipActive]}
+              >
+                <Text style={[styles.categoryChipText, selectedCategory === cat && styles.categoryChipTextActive]}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </Animated.View>
 
       {loading ? (
         <View style={styles.fullState}>
@@ -746,6 +785,8 @@ export default function FeedScreen() {
           keyExtractor={item => item.id}
           contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 120, gap: 20 }}
           showsVerticalScrollIndicator={false}
+          onScroll={onFeedScroll}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
