@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Text, StyleSheet } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { Link } from 'expo-router';
 import { AuthShell } from '../../components/auth/AuthShell';
 import { Field, PrimaryButton, Banner } from '../../components/auth/FormPrimitives';
 import { useAuth } from '../../lib/AuthContext';
 import { Colors, Fonts } from '../../constants/Theme';
 
 export default function SignupScreen() {
-  const router = useRouter();
   const { signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,9 +43,8 @@ export default function SignupScreen() {
 
     if (needsConfirmation) {
       setInfo('Almost there — confirm your email to activate your account.');
-    } else {
-      router.replace('/(tabs)');
     }
+    // Otherwise a session is created; AuthGate routes the new user to onboarding.
   };
 
   return (

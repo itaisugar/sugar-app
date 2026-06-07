@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,10 @@ import {
   RefreshControl,
   Alert,
   Linking,
+  Modal,
+  Dimensions,
 } from 'react-native';
+import Svg, { Circle, Ellipse, Line } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../constants/Theme';
 import { Tappable, ZoomImage, Equalizer, CatTag, GoldBadge, MemberFaces, EntranceView } from '../ui';
@@ -26,7 +29,7 @@ import { useProfile } from '../../lib/ProfileContext';
 import { usePodcastPlayer } from '../../lib/PodcastPlayerContext';
 import { fetchContentItems, FeedItem } from '../../lib/content';
 import { saveItem, unsaveItem, getSavedSubset } from '../../lib/saved';
-import { useLanguage } from '../../lib/LanguageContext';
+import { useLanguage, type Language } from '../../lib/LanguageContext';
 import { fetchJoinedClubsActivity, ClubActivity } from '../../lib/clubs';
 import { fetchFollowedActivity, activityVerb, FollowActivity } from '../../lib/social';
 import { touchDayStreak } from '../../lib/streak';
@@ -37,6 +40,28 @@ import { generateBriefing, type Briefing } from '../../lib/briefing';
 import { narrateItem } from '../../lib/narrate';
 
 const CATEGORIES = ['For You', 'Science', 'AI', 'Philosophy', 'Performance', 'Geopolitics', 'Business'];
+
+// Languages offered by the translate menu, in display order.
+const LANGUAGE_OPTIONS: { code: Language; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'he', label: 'עברית' },
+];
+
+// A clean, monochrome line-art globe — tinted by `color` so it can sit quietly
+// in the header and warm to the accent when its menu is open.
+function GlobeIcon({ color, size = 19 }: { color: string; size?: number }) {
+  const c = size / 2;
+  const r = size / 2 - 1.25;
+  return (
+    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <Circle cx={c} cy={c} r={r} stroke={color} strokeWidth={1.4} fill="none" />
+      <Ellipse cx={c} cy={c} rx={r * 0.5} ry={r} stroke={color} strokeWidth={1.4} fill="none" />
+      <Line x1={c - r} y1={c} x2={c + r} y2={c} stroke={color} strokeWidth={1.4} />
+      <Line x1={c - r * 0.84} y1={c - r * 0.5} x2={c + r * 0.84} y2={c - r * 0.5} stroke={color} strokeWidth={1.1} />
+      <Line x1={c - r * 0.84} y1={c + r * 0.5} x2={c + r * 0.84} y2={c + r * 0.5} stroke={color} strokeWidth={1.1} />
+    </Svg>
+  );
+}
 
 const SOURCE_LABELS: Record<string, string> = {
   curated: "From the Editor's Desk",
@@ -262,7 +287,10 @@ export default function FeedScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { profile, refresh: refreshProfile } = useProfile();
-  const { language, toggle: toggleLanguage, ensureTranslations } = useLanguage();
+  const { language, setLanguage, ensureTranslations } = useLanguage();
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [langMenuPos, setLangMenuPos] = useState({ top: 0, right: Spacing.lg });
+  const globeBtnRef = useRef<any>(null);
   const [selectedCategory, setSelectedCategory] = useState('For You');
   const [searchQuery, setSearchQuery] = useState('');
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -353,8 +381,17 @@ export default function FeedScreen() {
     ensureTranslations(items.map((i) => i.id));
   }, [language, items, ensureTranslations]);
 
-  const onToggleLanguage = () => {
-    toggleLanguage();
+  // Anchor the dropdown under the globe, aligned to its right edge.
+  const openLangMenu = () => {
+    globeBtnRef.current?.measureInWindow((x: number, y: number, w: number, h: number) => {
+      setLangMenuPos({ top: y + h + 8, right: Dimensions.get('window').width - (x + w) });
+      setLangMenuOpen(true);
+    });
+  };
+
+  const selectLanguage = (code: Language) => {
+    setLanguage(code);
+    setLangMenuOpen(false);
   };
 
   const displayName = profile?.full_name ?? user?.email ?? 'I';
@@ -437,20 +474,52 @@ export default function FeedScreen() {
             </View>
           )}
           <TouchableOpacity
-            onPress={onToggleLanguage}
-            style={[styles.langIcon, language === 'he' && styles.langIconActive]}
+            ref={globeBtnRef}
+            onPress={openLangMenu}
+            style={[styles.globeBtn, langMenuOpen && styles.globeBtnActive]}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Translate"
           >
-            <Text style={[styles.langGlyph, language === 'he' && styles.langIconTextActive]}>⇄</Text>
-            <Text style={[styles.langCode, language === 'he' && styles.langIconTextActive]}>
-              {language === 'he' ? 'He' : 'En'}
-            </Text>
+            <GlobeIcon color={langMenuOpen ? Colors.primary : Colors.textSecondary} />
           </TouchableOpacity>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
         </View>
       </View>
+
+      <Modal
+        visible={langMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLangMenuOpen(false)}
+      >
+        <Pressable style={styles.langBackdrop} onPress={() => setLangMenuOpen(false)}>
+          <View style={[styles.langMenu, { top: langMenuPos.top, right: langMenuPos.right }]}>
+            {LANGUAGE_OPTIONS.map((opt, i) => {
+              const active = language === opt.code;
+              return (
+                <React.Fragment key={opt.code}>
+                  {i > 0 ? <View style={styles.langMenuDivider} /> : null}
+                  <TouchableOpacity
+                    style={styles.langMenuItem}
+                    activeOpacity={0.7}
+                    onPress={() => selectLanguage(opt.code)}
+                    accessibilityRole="menuitem"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text style={[styles.langMenuText, active && styles.langMenuTextActive]}>
+                      {opt.label}
+                    </Text>
+                    {active ? <Text style={styles.langMenuCheck}>✓</Text> : null}
+                  </TouchableOpacity>
+                </React.Fragment>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
 
       <TouchableOpacity
         style={styles.searchContainer}
@@ -721,33 +790,61 @@ const styles = StyleSheet.create({
     color: Colors.white,
     letterSpacing: 0.2,
   },
-  langIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+  globeBtn: {
+    width: 34,
+    height: 34,
     borderRadius: Radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: Colors.surfaceBorderStrong,
+    borderColor: Colors.borderStrong,
     backgroundColor: Colors.background,
   },
-  langIconActive: {
+  globeBtnActive: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.primaryGlow,
+    backgroundColor: Colors.primarySoft,
   },
-  langGlyph: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    lineHeight: 13,
+  // Dropdown overlay — transparent so the feed stays visible behind it.
+  langBackdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
-  langCode: {
+  langMenu: {
+    position: 'absolute',
+    minWidth: 168,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
+    overflow: 'hidden',
+    ...Shadow.lg,
+  },
+  langMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: 13,
+  },
+  langMenuDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+  langMenuText: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
+  langMenuTextActive: {
     fontFamily: Fonts.sansSemibold,
-    fontSize: 10,
-    letterSpacing: 0.4,
-    color: Colors.textSecondary,
+    color: Colors.primary,
   },
-  langIconTextActive: { color: Colors.primary },
+  langMenuCheck: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontFamily: Fonts.sansSemibold,
+  },
   avatar: {
     width: 34,
     height: 34,
