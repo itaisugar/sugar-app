@@ -150,7 +150,6 @@ export default function PublicProfileScreen() {
             { v: profile.articles_read, l: 'Articles' },
             { v: profile.podcasts_listened, l: 'Podcasts' },
             { v: profile.books_completed, l: 'Books' },
-            { v: profile.plans_completed, l: 'Plans' },
           ].map(s => (
             <View key={s.l} style={styles.statCell}>
               <Text style={styles.statNum}>{s.v}</Text>

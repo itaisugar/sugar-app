@@ -11,14 +11,13 @@ export type PublicProfile = {
   articles_read: number;
   podcasts_listened: number;
   books_completed: number;
-  plans_completed: number;
   following: number;
   followers: number;
   created_at: string;
 };
 
 const PUBLIC_COLUMNS =
-  'id, full_name, interests, total_score, weekly_streak, articles_read, podcasts_listened, books_completed, plans_completed, following, followers, created_at';
+  'id, full_name, interests, total_score, weekly_streak, articles_read, podcasts_listened, books_completed, following, followers, created_at';
 
 export async function searchProfiles(query: string, currentUserId?: string): Promise<PublicProfile[]> {
   const trimmed = query.trim();

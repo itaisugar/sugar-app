@@ -515,7 +515,6 @@ export default function ArticleReader() {
       <View style={styles.actionBarWrap}>
         <View style={styles.actionBar}>
           <ActionChip label={saved ? 'Saved' : 'Save'} onPress={toggleSave} active={saved} />
-          <ActionChip label="Plan it" primary />
           <ActionChip label="Share" />
           <ActionChip label="Note" />
         </View>

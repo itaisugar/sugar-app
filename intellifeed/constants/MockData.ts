@@ -24,28 +24,6 @@ export interface FeedItem {
   trendingScore?: number;
 }
 
-export interface PlanItem {
-  id: string;
-  title: string;
-  sourceItem: string;
-  category: string;
-  categoryColor: string;
-  steps: PlanStep[];
-  progress: number;
-  createdAt: string;
-  dueDate?: string;
-  type: 'learning' | 'fitness' | 'reading' | 'research' | 'habit';
-}
-
-export interface PlanStep {
-  id: string;
-  title: string;
-  description: string;
-  isCompleted: boolean;
-  type: 'task' | 'buy' | 'read' | 'watch' | 'practice';
-  link?: string;
-}
-
 export interface Club {
   id: string;
   name: string;
@@ -87,7 +65,6 @@ export interface UserProfile {
   articlesRead: number;
   podcastsListened: number;
   booksCompleted: number;
-  plansCompleted: number;
   knowledgeTree: KnowledgeNode[];
   badges: Badge[];
   following: number;
@@ -246,104 +223,6 @@ export const FEED_ITEMS: FeedItem[] = [
     timestamp: '2 days ago',
     tags: ['Geopolitics', 'Semiconductors', 'Macro', 'Strategy'],
     trendingScore: 87,
-  },
-];
-
-// ─── PLAN DATA ───────────────────────────────────────────────────────────────
-
-export const PLAN_ITEMS: PlanItem[] = [
-  {
-    id: 'p1',
-    title: 'Zone 2 Endurance Protocol — Eight-Week Build',
-    sourceItem: 'Zone 2 Training: The Cellular Science of Endurance',
-    category: 'Performance',
-    categoryColor: TAG_COLORS.fitness,
-    type: 'fitness',
-    progress: 35,
-    createdAt: 'Created 3 days ago',
-    dueDate: '5 weeks remaining',
-    steps: [
-      {
-        id: 's1',
-        title: 'Acquire Garmin HRM-Pro chest strap',
-        description: 'Precision heart-rate measurement is essential to remain within the 60–70% threshold.',
-        isCompleted: true,
-        type: 'buy',
-        link: 'https://amazon.com',
-      },
-      {
-        id: 's2',
-        title: 'Calculate individual maximum heart rate',
-        description: 'Apply the formula: 220 minus age. Then derive 60–70% to define your Zone 2 corridor.',
-        isCompleted: true,
-        type: 'task',
-      },
-      {
-        id: 's3',
-        title: 'Inaugural Zone 2 session — thirty minutes',
-        description: 'Light run, cycling, or brisk walking — maintaining conversational pace throughout.',
-        isCompleted: false,
-        type: 'practice',
-      },
-      {
-        id: 's4',
-        title: 'Read the mitochondrial chapter in Outlive',
-        description: 'Peter Attia — Chapter 12, on the biology of human performance.',
-        isCompleted: false,
-        type: 'read',
-      },
-      {
-        id: 's5',
-        title: 'Schedule four weekly sessions in your calendar',
-        description: 'Tuesday, Thursday, Saturday, Sunday — forty-five minutes each.',
-        isCompleted: false,
-        type: 'task',
-      },
-    ],
-  },
-  {
-    id: 'p2',
-    title: 'AI in Medicine — Structured Study Path',
-    sourceItem: 'The AI Predicting Cardiac Events Seven Years in Advance',
-    category: 'AI',
-    categoryColor: TAG_COLORS.ai,
-    type: 'learning',
-    progress: 60,
-    createdAt: 'Created last week',
-    dueDate: '3 weeks remaining',
-    steps: [
-      {
-        id: 's1',
-        title: 'Read the full paper in Nature Medicine',
-        description: 'Download the PDF and annotate core concepts and methodology.',
-        isCompleted: true,
-        type: 'read',
-        link: 'https://nature.com',
-      },
-      {
-        id: 's2',
-        title: 'Attend the DeepMind webinar on Medical AI',
-        description: 'Ninety-minute session with the lead research team.',
-        isCompleted: true,
-        type: 'watch',
-        link: 'https://youtube.com',
-      },
-      {
-        id: 's3',
-        title: 'Course: Machine Learning for Healthcare (MIT)',
-        description: 'MIT OpenCourseWare — eight lectures, complimentary access.',
-        isCompleted: false,
-        type: 'read',
-        link: 'https://ocw.mit.edu',
-      },
-      {
-        id: 's4',
-        title: 'Join the AI & Medicine club for discourse',
-        description: 'Exchange perspectives with practitioners in the field.',
-        isCompleted: false,
-        type: 'task',
-      },
-    ],
   },
 ];
 
@@ -534,7 +413,6 @@ export const USER_PROFILE: UserProfile = {
   articlesRead: 312,
   podcastsListened: 87,
   booksCompleted: 24,
-  plansCompleted: 9,
   following: 43,
   followers: 128,
   knowledgeTree: [
@@ -591,13 +469,6 @@ export const USER_PROFILE: UserProfile = {
       icon: '◆',
       description: '100 articles consumed with depth',
       unlockedAt: 'March 2024',
-    },
-    {
-      id: 'b2',
-      name: 'Deep Thinker',
-      icon: '◇',
-      description: 'Five structured learning plans completed',
-      unlockedAt: 'May 2024',
     },
     {
       id: 'b3',

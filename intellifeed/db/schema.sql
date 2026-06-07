@@ -16,7 +16,6 @@ create table if not exists public.profiles (
   articles_read   integer default 0,
   podcasts_listened integer default 0,
   books_completed integer default 0,
-  plans_completed integer default 0,
   following       integer default 0,
   followers       integer default 0,
   created_at      timestamptz default now(),

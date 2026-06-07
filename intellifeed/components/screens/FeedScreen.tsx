@@ -451,10 +451,6 @@ function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSa
         <TouchableOpacity style={styles.actionBtn}>
           <Text style={styles.actionIcon}>↗</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.planBtn}>
-          <Text style={styles.planBtnText}>+ Plan</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -1683,20 +1679,6 @@ const styles = StyleSheet.create({
   actionCountActive: {
     color: Colors.primary,
   },
-  planBtn: {
-    marginLeft: 'auto',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.primary,
-  },
-  planBtnText: {
-    fontSize: 11,
-    fontFamily: Fonts.sansSemibold,
-    color: Colors.white,
-    letterSpacing: 0.2,
-  },
-
   // ─── States ──────────────────────────────────────────────────────────────
   emptyState: {
     alignItems: 'center',
