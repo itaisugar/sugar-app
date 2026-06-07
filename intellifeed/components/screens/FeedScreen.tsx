@@ -480,26 +480,41 @@ export default function FeedScreen() {
   const quote = getDailyQuote();
   const player = usePodcastPlayer();
 
-  // Collapse the search + category chips on scroll down; reveal on scroll up.
-  // Driven by scroll position via diffClamp — the canonical, web-safe pattern.
+  // Collapse the search + category chips on scroll down; fully reveal on scroll up.
+  // scrollY is fed by Animated.event (fires on web); a listener derives direction
+  // and drives a 0/1 visibility value, so any upward scroll reopens it completely.
   const scrollY = useRef(new Animated.Value(0)).current;
+  const headerVisible = useRef(new Animated.Value(1)).current; // 1 shown, 0 hidden
+  const lastY = useRef(0);
+  const visRef = useRef(1);
   const [topH, setTopH] = useState(0);
+
+  useEffect(() => {
+    const id = scrollY.addListener(({ value }) => {
+      const dy = value - lastY.current;
+      lastY.current = value;
+      let next = visRef.current;
+      if (value <= 4) next = 1;        // at the top → show
+      else if (dy > 4) next = 0;       // scrolling down → hide
+      else if (dy < -4) next = 1;      // scrolling up → show
+      if (next !== visRef.current) {
+        visRef.current = next;
+        Animated.timing(headerVisible, { toValue: next, duration: 200, useNativeDriver: false }).start();
+      }
+    });
+    return () => scrollY.removeListener(id);
+  }, [scrollY, headerVisible]);
 
   const onFeedScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
     { useNativeDriver: false },
   );
 
-  const clamped = useMemo(
-    () => Animated.diffClamp(scrollY, 0, topH || 1),
-    [scrollY, topH],
-  );
-
   const collapsibleStyle = topH
     ? {
         overflow: 'hidden' as const,
-        height: clamped.interpolate({ inputRange: [0, topH], outputRange: [topH, 0] }),
-        opacity: clamped.interpolate({ inputRange: [0, topH], outputRange: [1, 0] }),
+        height: headerVisible.interpolate({ inputRange: [0, 1], outputRange: [0, topH] }),
+        opacity: headerVisible,
       }
     : { overflow: 'hidden' as const };
 
