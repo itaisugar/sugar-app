@@ -202,7 +202,6 @@ export default function ProfileScreen() {
           <View style={styles.body}>
             {/* Membership card */}
             <View style={styles.membershipCard}>
-              <View style={styles.membershipGlow} pointerEvents="none" />
               <View style={styles.membershipTop}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.goldKicker, { marginBottom: 8 }]}>CUMULATIVE SCORE</Text>
@@ -387,7 +386,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.hairlineGold, padding: Spacing.lg,
     backgroundColor: Colors.surfaceAlt, ...Shadow.sm,
   },
-  membershipGlow: { position: 'absolute', top: -40, right: -40, width: 130, height: 130, borderRadius: 999, backgroundColor: Colors.primarySoftStrong },
   membershipTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   scoreBig: { fontFamily: Fonts.display, fontSize: 42, color: Colors.primary, letterSpacing: -1, lineHeight: 44 },
   toNext: { fontFamily: Fonts.sans, fontSize: 12, color: Colors.textMuted, marginTop: 8 },
