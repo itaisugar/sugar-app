@@ -23,16 +23,31 @@ const C = {
   border: 'rgba(255,255,255,0.12)',
 };
 
-// Load a File into an HTMLImageElement via an object URL.
+// Load a File into an HTMLImageElement via an object URL. Rejects (rather than
+// hanging) if the browser can't decode the format — e.g. an iPhone HEIC photo on
+// a non-Safari browser — or if decoding stalls.
 function loadImage(file: File): Promise<{ img: HTMLImageElement; url: string }> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => resolve({ img, url });
-    img.onerror = () => {
+    const fail = (msg: string) => {
+      clearTimeout(timer);
       URL.revokeObjectURL(url);
-      reject(new Error("That image couldn't be opened. Try a JPG or PNG photo."));
+      reject(new Error(msg));
     };
+    const timer = setTimeout(
+      () => fail('That photo took too long to open. Try a JPG or PNG.'),
+      20000,
+    );
+    img.onload = () => {
+      clearTimeout(timer);
+      if (!img.naturalWidth || !img.naturalHeight) {
+        return fail("That image couldn't be opened. Try a JPG or PNG photo.");
+      }
+      resolve({ img, url });
+    };
+    img.onerror = () =>
+      fail("That image couldn't be opened. Try a JPG or PNG photo.");
     img.src = url;
   });
 }
@@ -60,7 +75,7 @@ export async function cropAvatar(file: File): Promise<File | null> {
     Object.assign(overlay.style, {
       position: 'fixed',
       inset: '0',
-      zIndex: '99999',
+      zIndex: '2147483647',
       background: C.backdrop,
       display: 'flex',
       flexDirection: 'column',

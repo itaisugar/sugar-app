@@ -4,12 +4,45 @@ import { cropAvatar } from './avatarCrop';
 // Web-only project: pick a file via the browser's native file dialog. No native
 // image-picker dependency needed (and supabase-js uploads a File/Blob directly
 // on web, so no base64 conversion either).
+//
+// Robustness notes (this is what kept the avatar "stuck on loading"):
+//  - The input is appended to the DOM. Detached inputs can be garbage-collected
+//    on some mobile browsers before `change` fires, losing the selection.
+//  - Cancellation is handled. If the user backs out of the picker, the `change`
+//    event never fires; without this the caller's promise would hang forever and
+//    the upload spinner would spin indefinitely. We resolve null on the `cancel`
+//    event and via a window-focus fallback for browsers that don't emit it.
 function pickImageFile(): Promise<File | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.onchange = () => resolve(input.files?.[0] ?? null);
+    input.style.position = 'fixed';
+    input.style.left = '-10000px';
+    input.style.opacity = '0';
+
+    let settled = false;
+    const finish = (file: File | null) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('focus', onFocus);
+      input.remove();
+      resolve(file);
+    };
+
+    const onFocus = () => {
+      // The window regains focus when the native dialog closes. Give `change` a
+      // beat to fire; if no file arrived, treat it as a cancel so we don't hang.
+      setTimeout(() => {
+        if (!input.files || input.files.length === 0) finish(null);
+      }, 1500);
+    };
+
+    input.addEventListener('change', () => finish(input.files?.[0] ?? null));
+    input.addEventListener('cancel', () => finish(null));
+    window.addEventListener('focus', onFocus);
+
+    document.body.appendChild(input);
     input.click();
   });
 }
