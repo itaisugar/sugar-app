@@ -480,36 +480,28 @@ export default function FeedScreen() {
   const quote = getDailyQuote();
   const player = usePodcastPlayer();
 
-  // Collapse the search + category chips while scrolling down; restore on scroll up.
-  const collapse = useRef(new Animated.Value(0)).current; // 0 = open, 1 = collapsed
-  const lastY = useRef(0);
-  const isCollapsed = useRef(false);
+  // Collapse the search + category chips on scroll down; reveal on scroll up.
+  // Driven by scroll position via diffClamp — the canonical, web-safe pattern.
+  const scrollY = useRef(new Animated.Value(0)).current;
   const [topH, setTopH] = useState(0);
 
-  const setCollapsed = (next: boolean) => {
-    if (isCollapsed.current === next) return;
-    isCollapsed.current = next;
-    Animated.timing(collapse, {
-      toValue: next ? 1 : 0,
-      duration: 200,
-      useNativeDriver: false, // animating height
-    }).start();
-  };
+  const onFeedScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: false },
+  );
 
-  const onFeedScroll = (e: { nativeEvent: { contentOffset: { y: number } } }) => {
-    const y = e.nativeEvent.contentOffset.y;
-    const dy = y - lastY.current;
-    lastY.current = y;
-    if (y <= 4) setCollapsed(false);
-    else if (dy > 6) setCollapsed(true);
-    else if (dy < -6) setCollapsed(false);
-  };
+  const clamped = useMemo(
+    () => Animated.diffClamp(scrollY, 0, topH || 1),
+    [scrollY, topH],
+  );
 
-  const collapsibleStyle = {
-    overflow: 'hidden' as const,
-    height: topH ? collapse.interpolate({ inputRange: [0, 1], outputRange: [topH, 0] }) : undefined,
-    opacity: collapse.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-  };
+  const collapsibleStyle = topH
+    ? {
+        overflow: 'hidden' as const,
+        height: clamped.interpolate({ inputRange: [0, topH], outputRange: [topH, 0] }),
+        opacity: clamped.interpolate({ inputRange: [0, topH], outputRange: [1, 0] }),
+      }
+    : { overflow: 'hidden' as const };
 
   const briefingActive = !!briefing && player.isActive(briefing.trackId);
   const briefingPlaying = briefingActive && player.isPlaying;
