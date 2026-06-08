@@ -653,10 +653,18 @@ export default function FeedScreen() {
   const snapToNearest = useCallback((y: number) => {
     const offsets = snapOffsetsRef.current;
     if (!offsets || offsets.length === 0) return;
-    let best = offsets[0];
+    // The very top (0) is a valid rest point too, so you can sit on the Daily
+    // Briefing header instead of being pulled onto the first article.
+    let best = 0;
     for (const o of offsets) {
       if (Math.abs(o - y) < Math.abs(best - y)) best = o;
     }
+    // Gentle detent: only pull in when you stopped *near* a card. Stop in the
+    // band between cards and the feed stays where you left it — so you can
+    // position a card and comfortably tap like / save / share without being
+    // yanked back to centre.
+    const PULL = FOCUS_SLOT_H * 0.38;
+    if (Math.abs(best - y) > PULL) return;
     // Dead-zone: ignore sub-pixel/tiny gaps so we never fire a snap that does
     // nothing but emit events.
     if (Math.abs(best - y) > 3) {
