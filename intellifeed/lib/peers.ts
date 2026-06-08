@@ -5,6 +5,7 @@ import { supabase } from './supabase';
 export type PublicProfile = {
   id: string;
   full_name: string | null;
+  avatar_url: string | null;
   interests: string[];
   total_score: number;
   weekly_streak: number;
@@ -17,7 +18,7 @@ export type PublicProfile = {
 };
 
 const PUBLIC_COLUMNS =
-  'id, full_name, interests, total_score, weekly_streak, articles_read, podcasts_listened, books_completed, following, followers, created_at';
+  'id, full_name, avatar_url, interests, total_score, weekly_streak, articles_read, podcasts_listened, books_completed, following, followers, created_at';
 
 export async function searchProfiles(query: string, currentUserId?: string): Promise<PublicProfile[]> {
   const trimmed = query.trim();

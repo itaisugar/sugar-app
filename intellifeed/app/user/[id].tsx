@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  View, Text, Image, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -110,7 +110,11 @@ export default function PublicProfileScreen() {
         <View style={styles.hero}>
           <Text style={TextStyles.kicker}>Reader</Text>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
+            {profile.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarPhoto} />
+            ) : (
+              <Text style={styles.avatarText}>{initial}</Text>
+            )}
           </View>
           <Text style={styles.name}>{profile.full_name ?? 'Reader'}</Text>
           <Text style={[TextStyles.tagline, { marginTop: 4 }]}>Member since {memberSince}</Text>
@@ -247,6 +251,7 @@ const styles = StyleSheet.create({
     fontSize: 44,
     color: Colors.onPrimary,
   },
+  avatarPhoto: { width: 96, height: 96, borderRadius: 48 },
   name: {
     fontFamily: Fonts.serif,
     fontSize: 28,

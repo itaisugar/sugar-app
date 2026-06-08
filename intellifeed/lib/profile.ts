@@ -5,9 +5,13 @@ export type Profile = {
   email: string | null;
   full_name: string | null;
   date_of_birth: string | null; // ISO date (YYYY-MM-DD)
+  avatar_url: string | null;
   interests: string[];
   onboarded: boolean;
   is_admin: boolean;
+  // Email notification preferences (see send-notification Edge Function)
+  notify_new_follower: boolean;
+  notify_new_content: boolean;
   total_score: number;
   weekly_streak: number;
   day_streak: number;
@@ -22,7 +26,16 @@ export type Profile = {
 };
 
 export type ProfilePatch = Partial<
-  Pick<Profile, 'full_name' | 'date_of_birth' | 'interests' | 'onboarded'>
+  Pick<
+    Profile,
+    | 'full_name'
+    | 'date_of_birth'
+    | 'avatar_url'
+    | 'interests'
+    | 'onboarded'
+    | 'notify_new_follower'
+    | 'notify_new_content'
+  >
 >;
 
 export async function fetchProfile(userId: string): Promise<Profile | null> {

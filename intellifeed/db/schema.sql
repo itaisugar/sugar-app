@@ -9,8 +9,11 @@ create table if not exists public.profiles (
   email           text,
   full_name       text,
   date_of_birth   date,
+  avatar_url      text,
   interests       text[] default '{}'::text[],
   onboarded       boolean default false,
+  notify_new_follower boolean default true,
+  notify_new_content  boolean default true,
   total_score     integer default 0,
   weekly_streak   integer default 0,
   articles_read   integer default 0,
@@ -27,6 +30,11 @@ alter table public.profiles add column if not exists date_of_birth date;
 
 -- Editorial role flag — set manually for trusted accounts
 alter table public.profiles add column if not exists is_admin boolean default false;
+
+-- Profile photo + email notification preferences (see migrations_v7.sql)
+alter table public.profiles add column if not exists avatar_url text;
+alter table public.profiles add column if not exists notify_new_follower boolean default true;
+alter table public.profiles add column if not exists notify_new_content boolean default true;
 
 -- Audio URL for podcast episodes (idempotent ALTER)
 alter table public.content_items add column if not exists audio_url text;

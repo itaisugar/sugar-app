@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
+  Switch,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +20,7 @@ import { getCategoryStyle } from '../../constants/Categories';
 import { USER_PROFILE, KnowledgeNode } from '../../constants/MockData';
 import { useAuth } from '../../lib/AuthContext';
 import { useProfile } from '../../lib/ProfileContext';
+import { pickAndUploadAvatar } from '../../lib/avatar';
 import { fetchSavedItems } from '../../lib/saved';
 import { FeedItem } from '../../lib/content';
 
@@ -119,11 +122,36 @@ function DomainRow({ node, color, defaultOpen }: { node: KnowledgeNode; color: s
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const { profile: dbProfile, loading: profileLoading, error: profileError, refresh } = useProfile();
+  const { profile: dbProfile, loading: profileLoading, error: profileError, refresh, updateProfile } = useProfile();
   const [tab, setTab] = useState<'stats' | 'knowledge' | 'saved'>('stats');
   const [signingOut, setSigningOut] = useState(false);
   const [savedItems, setSavedItems] = useState<FeedItem[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+
+  const onChangeAvatar = async () => {
+    if (avatarBusy || !user) return;
+    setAvatarBusy(true);
+    try {
+      const url = await pickAndUploadAvatar(user.id);
+      if (url) await updateProfile({ avatar_url: url });
+    } catch (e: any) {
+      Alert.alert('Could not update photo', e?.message ?? 'Please try again.');
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const toggleNotify = async (
+    key: 'notify_new_follower' | 'notify_new_content',
+    value: boolean,
+  ) => {
+    try {
+      await updateProfile({ [key]: value });
+    } catch (e: any) {
+      Alert.alert('Could not save preference', e?.message ?? 'Please try again.');
+    }
+  };
 
   useEffect(() => {
     if (tab !== 'saved') return;
@@ -181,9 +209,24 @@ export default function ProfileScreen() {
         <EntranceView>
           {/* Hero */}
           <View style={styles.hero}>
-            <LinearGradient colors={[Colors.gold, Colors.primary, Colors.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatarRing}>
-              <View style={styles.avatarInner}><Text style={styles.avatarText}>{initial}</Text></View>
-            </LinearGradient>
+            <TouchableOpacity onPress={onChangeAvatar} activeOpacity={0.85} disabled={avatarBusy}>
+              <LinearGradient colors={[Colors.gold, Colors.primary, Colors.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatarRing}>
+                <View style={styles.avatarInner}>
+                  {dbProfile.avatar_url ? (
+                    <Image source={{ uri: dbProfile.avatar_url }} style={styles.avatarPhoto} />
+                  ) : (
+                    <Text style={styles.avatarText}>{initial}</Text>
+                  )}
+                </View>
+              </LinearGradient>
+              <View style={styles.avatarBadge}>
+                {avatarBusy ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Text style={styles.avatarBadgeGlyph}>＋</Text>
+                )}
+              </View>
+            </TouchableOpacity>
             <Text style={styles.heroName}>{displayName}</Text>
             <View style={styles.tierChip}>
               <Text style={{ color: Colors.gold, fontSize: 11 }}>◆</Text>
@@ -313,6 +356,38 @@ export default function ProfileScreen() {
               </View>
             ) : null}
 
+            {/* Email notifications */}
+            <View style={[styles.card, { padding: Spacing.lg }]}>
+              <Text style={[styles.faintKicker, { marginBottom: 4 }]}>EMAIL NOTIFICATIONS</Text>
+              <Text style={styles.notifyHint}>
+                Sent to {displayEmail || 'your email'} based on what you turn on below.
+              </Text>
+              <View style={styles.notifyRow}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={styles.notifyLabel}>New follower</Text>
+                  <Text style={styles.notifySub}>When someone starts following you.</Text>
+                </View>
+                <Switch
+                  value={dbProfile.notify_new_follower ?? true}
+                  onValueChange={(v) => toggleNotify('notify_new_follower', v)}
+                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  thumbColor={Colors.white}
+                />
+              </View>
+              <View style={[styles.notifyRow, styles.notifyRowLast]}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={styles.notifyLabel}>New article in your fields</Text>
+                  <Text style={styles.notifySub}>When a piece is published in a domain you chose.</Text>
+                </View>
+                <Switch
+                  value={dbProfile.notify_new_content ?? true}
+                  onValueChange={(v) => toggleNotify('notify_new_content', v)}
+                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  thumbColor={Colors.white}
+                />
+              </View>
+            </View>
+
             {/* Settings */}
             <View style={[styles.card, { overflow: 'hidden' }]}>
               {([
@@ -364,6 +439,24 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Colors.background,
   },
   avatarText: { fontFamily: Fonts.display, fontSize: 40, color: Colors.onPrimary },
+  avatarPhoto: { width: '100%', height: '100%', borderRadius: 43 },
+  avatarBadge: {
+    position: 'absolute', right: 0, bottom: 0,
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: Colors.primary, borderWidth: 2, borderColor: Colors.background,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarBadgeGlyph: { fontSize: 16, lineHeight: 18, color: Colors.white, fontFamily: Fonts.sansMedium },
+
+  // Email notifications
+  notifyHint: { fontFamily: Fonts.sans, fontSize: 12.5, lineHeight: 18, color: Colors.textMuted, marginBottom: 6 },
+  notifyRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  notifyRowLast: { borderBottomWidth: 0 },
+  notifyLabel: { fontFamily: Fonts.sansSemibold, fontSize: 14, color: Colors.textPrimary },
+  notifySub: { fontFamily: Fonts.sans, fontSize: 12, lineHeight: 16, color: Colors.textMuted, marginTop: 2 },
   heroName: { fontFamily: Fonts.display, fontSize: 24, letterSpacing: -0.4, color: Colors.textPrimary, marginTop: 14 },
   tierChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8,
