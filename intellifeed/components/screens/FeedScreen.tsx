@@ -664,6 +664,12 @@ export default function FeedScreen() {
   // RefreshControl pull gesture isn't available on web / standalone PWA.
   const velLastY = useRef(0);
   const velLastT = useRef(0);
+  // Strongest upward velocity seen in the last sliding window (px/ms, negative),
+  // with the time it was recorded. We fire the refresh when the fling *reaches*
+  // the top, by which point the live velocity has already bled off against the
+  // top edge — so we check this recent peak instead of the instantaneous value.
+  const peakUpVel = useRef(0);
+  const peakUpT = useRef(0);
   const triggerRefreshRef = useRef<(() => void) | null>(null);
   const refreshBusyRef = useRef(false); // guards against re-firing during one fling
 
@@ -680,7 +686,7 @@ export default function FeedScreen() {
     // band between cards and the feed stays where you left it — so you can
     // position a card and comfortably tap like / save / share without being
     // yanked back to centre.
-    const PULL = FOCUS_SLOT_H * 0.38;
+    const PULL = FOCUS_SLOT_H * 0.44;
     if (Math.abs(best - y) > PULL) return;
     // Dead-zone: ignore sub-pixel/tiny gaps so we never fire a snap that does
     // nothing but emit events.
@@ -728,7 +734,13 @@ export default function FeedScreen() {
         const vy = dt > 0 && dt < 200 ? (y - velLastY.current) / dt : 0;
         velLastY.current = y;
         velLastT.current = now;
-        if (y <= 2 && vy < -1.1 && !refreshBusyRef.current && !isSnapping.current) {
+        // Remember the strongest upward fling within a short sliding window; let
+        // an old peak expire so a gentle scroll up to the top can't trigger a
+        // refresh on the back of a fling that happened seconds ago.
+        if (now - peakUpT.current > 220) peakUpVel.current = 0;
+        if (vy < peakUpVel.current) { peakUpVel.current = vy; peakUpT.current = now; }
+        if (y <= 2 && peakUpVel.current < -0.9 && !refreshBusyRef.current && !isSnapping.current) {
+          peakUpVel.current = 0;
           triggerRefreshRef.current?.();
         }
         if (isSnapping.current) return;
