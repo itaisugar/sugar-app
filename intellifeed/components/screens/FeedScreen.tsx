@@ -50,16 +50,20 @@ const LANGUAGE_OPTIONS: { code: Language; label: string }[] = [
 
 // A clean, monochrome line-art globe — tinted by `color` so it can sit quietly
 // in the header and warm to the accent when its menu is open.
-function GlobeIcon({ color, size = 20 }: { color: string; size?: number }) {
-  const c = size / 2;
-  const r = size / 2 - 1.5;
+function GlobeIcon({ color, size = 19 }: { color: string; size?: number }) {
+  // Snap geometry to whole/half pixels so strokes land on the pixel grid and
+  // render crisp instead of soft. Thin, even strokes read sharper than heavy
+  // ones at this size (heavier strokes just spread the anti-aliased edge).
+  const px = Math.round(size);
+  const c = px / 2;
+  const r = Math.round(px / 2 - 2) + 0.5;
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <Circle cx={c} cy={c} r={r} stroke={color} strokeWidth={1.8} fill="none" />
-      <Ellipse cx={c} cy={c} rx={r * 0.5} ry={r} stroke={color} strokeWidth={1.8} fill="none" />
-      <Line x1={c - r} y1={c} x2={c + r} y2={c} stroke={color} strokeWidth={1.8} />
-      <Line x1={c - r * 0.84} y1={c - r * 0.5} x2={c + r * 0.84} y2={c - r * 0.5} stroke={color} strokeWidth={1.5} />
-      <Line x1={c - r * 0.84} y1={c + r * 0.5} x2={c + r * 0.84} y2={c + r * 0.5} stroke={color} strokeWidth={1.5} />
+    <Svg width={px} height={px} viewBox={`0 0 ${px} ${px}`}>
+      <Circle cx={c} cy={c} r={r} stroke={color} strokeWidth={1.25} fill="none" />
+      <Ellipse cx={c} cy={c} rx={r * 0.55} ry={r} stroke={color} strokeWidth={1.25} fill="none" />
+      <Line x1={c - r} y1={c} x2={c + r} y2={c} stroke={color} strokeWidth={1.25} />
+      <Line x1={c - r * 0.82} y1={c - r * 0.5} x2={c + r * 0.82} y2={c - r * 0.5} stroke={color} strokeWidth={1} />
+      <Line x1={c - r * 0.82} y1={c + r * 0.5} x2={c + r * 0.82} y2={c + r * 0.5} stroke={color} strokeWidth={1} />
     </Svg>
   );
 }
