@@ -215,7 +215,16 @@ function ArticleCarousel({
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={(e) => setIdx(Math.round(e.nativeEvent.contentOffset.x / w))}
+        scrollEventThrottle={16}
+        // Update the page dots live as you swipe — onMomentumScrollEnd alone is
+        // unreliable on web (it often doesn't fire), so drive idx from onScroll
+        // and keep momentum-end as a snap-to-final safety net.
+        onScroll={(e) => {
+          if (!w) return;
+          const next = Math.round(e.nativeEvent.contentOffset.x / w);
+          if (next !== idx) setIdx(next);
+        }}
+        onMomentumScrollEnd={(e) => w && setIdx(Math.round(e.nativeEvent.contentOffset.x / w))}
       >
         {/* Cover */}
         <Pressable onPress={onOpen} style={{ width: w, height }}>
