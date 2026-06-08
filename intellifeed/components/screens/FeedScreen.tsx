@@ -18,6 +18,7 @@ import {
   Modal,
   Dimensions,
   Animated,
+  Platform,
 } from 'react-native';
 import Svg, { Circle, Ellipse, Line } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -660,18 +661,17 @@ export default function FeedScreen() {
   // True while our own glide is running, so the scroll events it emits don't
   // re-trigger another snap (which caused the jitter between cards).
   const isSnapping = useRef(false);
-  // Hard-fling-to-top → refresh. We track scroll velocity ourselves because the
-  // RefreshControl pull gesture isn't available on web / standalone PWA.
-  const velLastY = useRef(0);
-  const velLastT = useRef(0);
-  // Strongest upward velocity seen in the last sliding window (px/ms, negative),
-  // with the time it was recorded. We fire the refresh when the fling *reaches*
-  // the top, by which point the live velocity has already bled off against the
-  // top edge — so we check this recent peak instead of the instantaneous value.
-  const peakUpVel = useRef(0);
-  const peakUpT = useRef(0);
+  // Instagram-style pull-to-refresh. The native RefreshControl handles this on
+  // iOS/Android, but it's a no-op on react-native-web — so on web/PWA we drive
+  // the gesture ourselves (see the touch-listener effect below). `pullY` is how
+  // far the list is dragged below the top edge; the spinner is revealed in the
+  // gap that opens above it.
+  const pullY = useRef(new Animated.Value(0)).current;
+  const pullActive = useRef(false); // a downward pull-from-top gesture is in progress
+  const pullStartY = useRef(0); // clientY where the pull began
+  const pullDist = useRef(0); // current damped pull distance (px)
   const triggerRefreshRef = useRef<(() => void) | null>(null);
-  const refreshBusyRef = useRef(false); // guards against re-firing during one fling
+  const refreshBusyRef = useRef(false); // guards against re-firing while a refresh runs
 
   const snapToNearest = useCallback((y: number) => {
     const offsets = snapOffsetsRef.current;
@@ -727,22 +727,6 @@ export default function FeedScreen() {
       // into another snap, and keep the delay short enough to feel immediate.
       listener: (e: any) => {
         const y = e.nativeEvent.contentOffset.y;
-        // Estimate scroll velocity (px/ms; negative = upward). A hard fling that
-        // slams into the top edge triggers a refresh.
-        const now = Date.now();
-        const dt = now - velLastT.current;
-        const vy = dt > 0 && dt < 200 ? (y - velLastY.current) / dt : 0;
-        velLastY.current = y;
-        velLastT.current = now;
-        // Remember the strongest upward fling within a short sliding window; let
-        // an old peak expire so a gentle scroll up to the top can't trigger a
-        // refresh on the back of a fling that happened seconds ago.
-        if (now - peakUpT.current > 220) peakUpVel.current = 0;
-        if (vy < peakUpVel.current) { peakUpVel.current = vy; peakUpT.current = now; }
-        if (y <= 2 && peakUpVel.current < -0.9 && !refreshBusyRef.current && !isSnapping.current) {
-          peakUpVel.current = 0;
-          triggerRefreshRef.current?.();
-        }
         if (isSnapping.current) return;
         if (snapIdle.current) clearTimeout(snapIdle.current);
         snapIdle.current = setTimeout(() => snapToNearest(y), 110);
@@ -842,9 +826,83 @@ export default function FeedScreen() {
     setRefreshing(false);
     refreshBusyRef.current = false;
   }, [loadFeed]);
-  // Expose the latest onRefresh to the scroll-velocity listener (which is created
-  // before onRefresh in render order).
+  // Expose the latest onRefresh to the pull-to-refresh gesture (wired below),
+  // which is created before onRefresh in render order.
   triggerRefreshRef.current = onRefresh;
+
+  // ── Web/PWA pull-to-refresh ────────────────────────────────────────────────
+  // react-native-web ignores RefreshControl, so we implement the classic
+  // "drag down from the very top to refresh" gesture by hand on the FlatList's
+  // underlying scroll node. Re-attaches once the list mounts (after `loading`).
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const node: any = listRef.current?.getScrollableNode?.();
+    if (!node) return;
+
+    const MAX = 120; // furthest the content can be dragged below the top edge
+    const THRESHOLD = 64; // release past this much pull to fire the refresh
+    const REST = 56; // where the list rests, showing the spinner, while refreshing
+    // Rubber-band resistance: 1:1 at first, easing toward MAX — like iOS/Instagram.
+    const damp = (d: number) => MAX * (1 - Math.exp(-d / MAX));
+
+    const onStart = (e: TouchEvent) => {
+      if (refreshBusyRef.current || (node.scrollTop || 0) > 0) return;
+      pullStartY.current = e.touches[0].clientY;
+      pullActive.current = true;
+      pullDist.current = 0;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!pullActive.current || refreshBusyRef.current) return;
+      // If the list has scrolled away from the top, this isn't a pull — bail and
+      // let normal scrolling resume.
+      if ((node.scrollTop || 0) > 0) {
+        pullActive.current = false;
+        pullY.setValue(0);
+        return;
+      }
+      const dy = e.touches[0].clientY - pullStartY.current;
+      if (dy <= 0) {
+        // Dragging back up — release so the list scrolls normally again.
+        pullActive.current = false;
+        pullDist.current = 0;
+        pullY.setValue(0);
+        return;
+      }
+      e.preventDefault(); // suppress the browser's own overscroll/bounce
+      const d = damp(dy);
+      pullDist.current = d;
+      pullY.setValue(d);
+    };
+    const onEnd = () => {
+      if (!pullActive.current) return;
+      pullActive.current = false;
+      if (pullDist.current >= THRESHOLD && !refreshBusyRef.current) {
+        // Hold at the spinner rest position and refresh; the effect below springs
+        // back to 0 once `refreshing` clears.
+        Animated.timing(pullY, { toValue: REST, duration: 160, useNativeDriver: false }).start();
+        triggerRefreshRef.current?.();
+      } else {
+        Animated.timing(pullY, { toValue: 0, duration: 200, useNativeDriver: false }).start();
+      }
+    };
+
+    node.addEventListener('touchstart', onStart, { passive: true });
+    node.addEventListener('touchmove', onMove, { passive: false });
+    node.addEventListener('touchend', onEnd, { passive: true });
+    node.addEventListener('touchcancel', onEnd, { passive: true });
+    return () => {
+      node.removeEventListener('touchstart', onStart);
+      node.removeEventListener('touchmove', onMove);
+      node.removeEventListener('touchend', onEnd);
+      node.removeEventListener('touchcancel', onEnd);
+    };
+  }, [pullY, loading, error]);
+
+  // When a web refresh finishes, ease the list back up to the top.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || refreshing) return;
+    Animated.timing(pullY, { toValue: 0, duration: 220, useNativeDriver: false }).start();
+  }, [refreshing, pullY]);
 
   // Translate visible items in bulk when the user switches to Hebrew.
   useEffect(() => {
@@ -1131,6 +1189,25 @@ export default function FeedScreen() {
           </TouchableOpacity>
         </View>
       ) : (
+        <View style={styles.ptrClip}>
+          {/* Pull-to-refresh spinner — revealed in the gap as the list is dragged
+              down (web/PWA; on native the RefreshControl handles this). */}
+          <Animated.View
+            style={[
+              styles.ptrSpinner,
+              {
+                opacity: pullY.interpolate({ inputRange: [12, 52], outputRange: [0, 1], extrapolate: 'clamp' }),
+                transform: [
+                  { translateY: pullY.interpolate({ inputRange: [0, 56], outputRange: [-10, 14], extrapolate: 'clamp' }) },
+                  { scale: pullY.interpolate({ inputRange: [12, 56], outputRange: [0.6, 1], extrapolate: 'clamp' }) },
+                ],
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <ActivityIndicator color={Colors.primary} />
+          </Animated.View>
+          <Animated.View style={[styles.ptrContent, { transform: [{ translateY: pullY }] }]}>
         <FlatList
           ref={listRef}
           data={sortedItems}
@@ -1343,6 +1420,8 @@ export default function FeedScreen() {
             )
           }
         />
+          </Animated.View>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -2117,6 +2196,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 80,
     gap: 8,
+  },
+  // ─── Pull-to-refresh (web/PWA) ─────────────────────────────────────────────
+  ptrClip: {
+    flex: 1,
+    overflow: 'hidden', // hides the spinner until the list is dragged down off it
+  },
+  ptrSpinner: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ptrContent: {
+    flex: 1,
+    backgroundColor: Colors.backgroundDeep, // opaque so it covers the spinner at rest
   },
   fullState: {
     flex: 1,
