@@ -660,6 +660,12 @@ export default function FeedScreen() {
   // True while our own glide is running, so the scroll events it emits don't
   // re-trigger another snap (which caused the jitter between cards).
   const isSnapping = useRef(false);
+  // Hard-fling-to-top → refresh. We track scroll velocity ourselves because the
+  // RefreshControl pull gesture isn't available on web / standalone PWA.
+  const velLastY = useRef(0);
+  const velLastT = useRef(0);
+  const triggerRefreshRef = useRef<(() => void) | null>(null);
+  const refreshBusyRef = useRef(false); // guards against re-firing during one fling
 
   const snapToNearest = useCallback((y: number) => {
     const offsets = snapOffsetsRef.current;
@@ -714,8 +720,18 @@ export default function FeedScreen() {
       // nearest card. Ignore events emitted by our own glide so it can't chain
       // into another snap, and keep the delay short enough to feel immediate.
       listener: (e: any) => {
-        if (isSnapping.current) return;
         const y = e.nativeEvent.contentOffset.y;
+        // Estimate scroll velocity (px/ms; negative = upward). A hard fling that
+        // slams into the top edge triggers a refresh.
+        const now = Date.now();
+        const dt = now - velLastT.current;
+        const vy = dt > 0 && dt < 200 ? (y - velLastY.current) / dt : 0;
+        velLastY.current = y;
+        velLastT.current = now;
+        if (y <= 2 && vy < -1.1 && !refreshBusyRef.current && !isSnapping.current) {
+          triggerRefreshRef.current?.();
+        }
+        if (isSnapping.current) return;
         if (snapIdle.current) clearTimeout(snapIdle.current);
         snapIdle.current = setTimeout(() => snapToNearest(y), 110);
       },
@@ -808,10 +824,15 @@ export default function FeedScreen() {
   }, [loadFeed]);
 
   const onRefresh = useCallback(async () => {
+    refreshBusyRef.current = true;
     setRefreshing(true);
     await loadFeed();
     setRefreshing(false);
+    refreshBusyRef.current = false;
   }, [loadFeed]);
+  // Expose the latest onRefresh to the scroll-velocity listener (which is created
+  // before onRefresh in render order).
+  triggerRefreshRef.current = onRefresh;
 
   // Translate visible items in bulk when the user switches to Hebrew.
   useEffect(() => {
