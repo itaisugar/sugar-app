@@ -583,8 +583,12 @@ export default function FeedScreen() {
         fetchJoinedClubsActivity(),
         fetchFollowedActivity(),
       ]);
-      const savedIds = await getSavedSubset(data.map(d => d.id));
-      setItems(data.map(d => ({ ...d, isSaved: savedIds.has(d.id) })));
+      // De-duplicate by id so the same article can never show up twice on the
+      // feed (whether back-to-back or spaced apart), keeping the first occurrence.
+      const seen = new Set<string>();
+      const unique = data.filter(d => (seen.has(d.id) ? false : (seen.add(d.id), true)));
+      const savedIds = await getSavedSubset(unique.map(d => d.id));
+      setItems(unique.map(d => ({ ...d, isSaved: savedIds.has(d.id) })));
       setClubActivity(activity);
       setFollowActivity(social);
     } catch (e: any) {
@@ -1040,7 +1044,7 @@ export default function FeedScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="Change feed sort order"
                   >
-                    <Text style={styles.streamLabelText}>{sortLabel.toUpperCase()}</Text>
+                    <Text style={styles.streamLabelText}>{sortLabel}</Text>
                     <Text style={styles.streamCaret}>▾</Text>
                   </TouchableOpacity>
                   <View style={styles.streamRule} />
@@ -1716,8 +1720,8 @@ const styles = StyleSheet.create({
   },
   streamLabelText: {
     fontFamily: Fonts.sansBold,
-    fontSize: 11,
-    letterSpacing: 1.6,
+    fontSize: 12,
+    letterSpacing: 0.4,
     color: Colors.textSecondary,
   },
   streamCaret: {
