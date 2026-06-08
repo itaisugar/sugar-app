@@ -115,7 +115,7 @@ function deriveSourceFromUrl(url: string): string {
 type AISummary = {
   title: string;
   hook: string;       // 2 sentences for the feed — magnetic, not clickbait
-  summary: string;    // 5-7 sentences for the article reader — detailed
+  summary: string;    // 5-6 short, slide-ready paragraphs (one idea each)
   category: string;
   tags: string[];
   read_time_minutes: number;
@@ -139,7 +139,7 @@ Given the ${sourceLabel} below, produce a JSON object with these fields:
 
 - "hook": exactly 2 sentences (50-70 words) designed to make a thoughtful reader open the piece. Lead with the most striking finding, paradox, number, or framing — the kind of opening Aeon, The New Yorker, or The Browser would use. Tone: calm, intelligent, declarative. NEVER: rhetorical questions, second-person ("you", "your"), sensational adjectives, ellipses for suspense.
 
-- "summary": a deep editorial digest of the ${sourceLabel} — 450-650 words across 4-6 paragraphs separated by a blank line ("\\n\\n"). Treat it as a long-form briefing the reader can finish in 3-4 minutes and walk away genuinely informed without opening the original. Cover, in this order: (1) the central argument, finding, or thesis stated precisely; (2) the most important evidence, mechanisms, data points, or named studies — with concrete numbers where the source provides them; (3) the strongest counter-argument, caveat, or limitation; (4) implications, consequences, or what it changes about how we think or act. Voice: confident, measured, third-person, journalistic — closer to a New Yorker / Aeon / Financial Times longread than a blog summary. MUST be substantially longer and deeper than the hook, with distinct content — do not paraphrase the hook. No bullet lists, no headings, no second-person ("you").
+- "summary": the article distilled into 5 or 6 short paragraphs, each separated by a blank line ("\\n\\n"). These paragraphs are rendered BOTH as the article-reader body AND as the swipeable carousel that summarises the piece — one paragraph becomes one slide — so each paragraph MUST stand completely on its own and open with its single sharpest point. Rules for every paragraph: it carries exactly ONE fact, insight, or conclusion; it is 3 to 5 sentences and roughly 20-35 words total; each sentence is short and punchy, ideally 6-10 words, never a comma-heavy run-on (split a complex idea into two sentences). Lead with concrete numbers, names, or findings where the source provides them. Structure the sequence as a story: the FIRST paragraph states the central finding or thesis; the MIDDLE paragraphs each deliver one piece of evidence, mechanism, data point, or the key caveat/counter-argument; the LAST paragraph is the takeaway — what it changes, why it matters, or what the reader should do with it. Voice: confident, measured, third-person, journalistic. Do not paraphrase the hook. No bullet lists, no headings, no second-person ("you").
 
 - "category": ONE value from this list ONLY: ${ALLOWED_CATEGORIES.join(', ')}
 

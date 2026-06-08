@@ -85,28 +85,52 @@ const SOURCE_LABELS: Record<string, string> = {
 // Turns a single article into a swipeable "post": a cover slide (image + title)
 // followed by readable text slides built from the hook + summary, then a CTA.
 
-// Group the article text into slides of up to 4 sentences each (with a char cap
-// so a slide always fits the Instagram-sized card). Cover + these + CTA.
-const MAX_SENTENCES_PER_SLIDE = 4;
-const MAX_CHARS_PER_SLIDE = 320;
-const MAX_CONTENT_SLIDES = 4;
+// Carousel design rules (one "fact" per slide, short & punchy):
+//   • One idea per slide — the cover is the hook, each body paragraph is a fact.
+//   • ~3-5 short lines / 20-35 words per slide so the card never feels dense.
+//   • 5-8 total slides is the engagement "golden zone"; cover + CTA take two of
+//     those, so content slides are capped at 6.
+// The AI now authors `summary` as \n\n-delimited, self-contained paragraphs, so
+// we slide on paragraphs first and only fall back to sentence-grouping for older
+// single-blob summaries.
+const MAX_WORDS_PER_SLIDE = 35;
+const MAX_CONTENT_SLIDES = 6;
+
+function wordCount(s: string): number {
+  return s.split(/\s+/).filter(Boolean).length;
+}
 
 function splitIntoSlides(lede: string | null, body: string | null): string[] {
-  const text = [(lede ?? '').trim(), (body ?? '').trim()].filter(Boolean).join(' ').trim();
+  const bodyText = (body ?? '').trim();
+
+  // Preferred path: the summary is already authored as one-idea-per-paragraph.
+  const paragraphs = bodyText
+    .split(/\n{2,}/)
+    .map((p) => p.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  if (paragraphs.length >= 2) {
+    return paragraphs.slice(0, MAX_CONTENT_SLIDES);
+  }
+
+  // Fallback: legacy single-blob summary — group sentences into word-capped
+  // slides. The cover already carries the hook, so the lede only seeds the
+  // fallback when there's no body text at all.
+  const text = bodyText || (lede ?? '').trim();
   if (!text) return [];
   const sentences = (text.match(/[^.!?…]+[.!?…]+/g) ?? [text]).map((s) => s.trim()).filter(Boolean);
 
   const slides: string[] = [];
   let cur: string[] = [];
-  let curLen = 0;
+  let curWords = 0;
   for (const s of sentences) {
-    if (cur.length && (cur.length >= MAX_SENTENCES_PER_SLIDE || curLen + s.length > MAX_CHARS_PER_SLIDE)) {
+    const w = wordCount(s);
+    if (cur.length && curWords + w > MAX_WORDS_PER_SLIDE) {
       slides.push(cur.join(' '));
       cur = [];
-      curLen = 0;
+      curWords = 0;
     }
     cur.push(s);
-    curLen += s.length + 1;
+    curWords += w;
   }
   if (cur.length) slides.push(cur.join(' '));
   return slides.slice(0, MAX_CONTENT_SLIDES);
