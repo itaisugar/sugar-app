@@ -102,9 +102,9 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
     elevation: 0,
     shadowOpacity: 0,
-    height: 62,
-    paddingTop: 6,
-    paddingBottom: 8,
+    height: 74,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   tabItem: {
     flex: 1,

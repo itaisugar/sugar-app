@@ -32,11 +32,9 @@ import { usePodcastPlayer } from '../../lib/PodcastPlayerContext';
 import { fetchContentItems, FeedItem } from '../../lib/content';
 import { saveItem, unsaveItem, getSavedSubset } from '../../lib/saved';
 import { useLanguage, type Language } from '../../lib/LanguageContext';
-import { fetchJoinedClubsActivity, ClubActivity } from '../../lib/clubs';
 import { fetchFollowedActivity, activityVerb, FollowActivity } from '../../lib/social';
 import { touchDayStreak } from '../../lib/streak';
 import { getDailyQuote } from '../../lib/quotes';
-import { CLUBS, feedItemReaders } from '../../constants/MockData';
 import { getCategoryStyle } from '../../constants/Categories';
 import { generateBriefing, type Briefing } from '../../lib/briefing';
 import { narrateItem } from '../../lib/narrate';
@@ -626,7 +624,6 @@ export default function FeedScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [clubActivity, setClubActivity] = useState<ClubActivity[]>([]);
   const [followActivity, setFollowActivity] = useState<FollowActivity[]>([]);
   const [briefingBusy, setBriefingBusy] = useState(false);
   const [briefingError, setBriefingError] = useState<string | null>(null);
@@ -781,9 +778,8 @@ export default function FeedScreen() {
   const loadFeed = useCallback(async () => {
     setError(null);
     try {
-      const [data, activity, social] = await Promise.all([
+      const [data, social] = await Promise.all([
         fetchContentItems(),
-        fetchJoinedClubsActivity(),
         fetchFollowedActivity(),
       ]);
       // De-duplicate so the same article can never show up twice on the feed
@@ -802,7 +798,6 @@ export default function FeedScreen() {
       });
       const savedIds = await getSavedSubset(unique.map(d => d.id));
       setItems(unique.map(d => ({ ...d, isSaved: savedIds.has(d.id) })));
-      setClubActivity(activity);
       setFollowActivity(social);
     } catch (e: any) {
       setError(e?.message ?? 'Could not load the feed. Please try again.');
@@ -1337,33 +1332,6 @@ export default function FeedScreen() {
                             <Text style={{ color: Colors.textMuted }}>{activityVerb(a)}</Text>
                           </Text>
                           <Text style={styles.followTitle} numberOfLines={1}>{a.content_title}</Text>
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ) : null}
-
-              {/* Club activity */}
-              {clubActivity.length > 0 ? (
-                <View style={styles.activityCard}>
-                  <Text style={styles.activityCardLabel}>From Your Clubs</Text>
-                  {clubActivity.slice(0, 3).map(a => {
-                    const club = CLUBS.find(c => c.id === a.club_id);
-                    return (
-                      <Pressable
-                        key={a.comment_id}
-                        onPress={() => router.push({ pathname: '/club/[id]', params: { id: a.club_id } })}
-                        style={({ pressed }) => [styles.activityRow, pressed && { opacity: 0.6 }]}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.clubLabel}>{club?.name ?? 'Club'}</Text>
-                          <Text style={styles.activityBody} numberOfLines={2}>
-                            <Text style={{ fontFamily: Fonts.sansSemibold, color: Colors.textPrimary }}>
-                              {a.author_name ?? 'A reader'}
-                            </Text>
-                            {'  '}{a.body}
-                          </Text>
                         </View>
                       </Pressable>
                     );
