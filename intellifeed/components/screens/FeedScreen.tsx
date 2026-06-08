@@ -42,6 +42,14 @@ import { narrateItem } from '../../lib/narrate';
 
 const CATEGORIES = ['For You', 'Science', 'AI', 'Philosophy', 'Performance', 'Geopolitics', 'Business'];
 
+// Sort modes for the feed stream (the "LATEST" divider doubles as the selector).
+type SortMode = 'latest' | 'popular' | 'relevant';
+const SORT_OPTIONS: { mode: SortMode; label: string }[] = [
+  { mode: 'latest', label: 'Latest' },
+  { mode: 'popular', label: 'Most Popular' },
+  { mode: 'relevant', label: 'Most Relevant' },
+];
+
 // Languages offered by the translate menu, in display order.
 const LANGUAGE_OPTIONS: { code: Language; label: string }[] = [
   { code: 'en', label: 'English' },
@@ -469,6 +477,11 @@ export default function FeedScreen() {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [langMenuPos, setLangMenuPos] = useState({ top: 0, right: Spacing.lg });
   const globeBtnRef = useRef<any>(null);
+
+  const [sortMode, setSortMode] = useState<SortMode>('latest');
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [sortMenuPos, setSortMenuPos] = useState({ top: 0, left: Spacing.lg });
+  const sortLabelRef = useRef<any>(null);
   const [selectedCategory, setSelectedCategory] = useState('For You');
   const [searchQuery, setSearchQuery] = useState('');
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -614,6 +627,18 @@ export default function FeedScreen() {
     setLangMenuOpen(false);
   };
 
+  const openSortMenu = () => {
+    sortLabelRef.current?.measureInWindow((x: number, y: number, _w: number, h: number) => {
+      setSortMenuPos({ top: y + h + 8, left: x });
+      setSortMenuOpen(true);
+    });
+  };
+  const selectSort = (mode: SortMode) => {
+    setSortMode(mode);
+    setSortMenuOpen(false);
+  };
+  const sortLabel = SORT_OPTIONS.find(o => o.mode === sortMode)?.label ?? 'Latest';
+
   const displayName = profile?.full_name ?? user?.email ?? 'I';
   const initial = displayName.charAt(0).toUpperCase();
   const userInterests = profile?.interests ?? [];
@@ -641,6 +666,33 @@ export default function FeedScreen() {
       item.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
+
+  // Apply the chosen sort. 'latest' keeps the fetch order (newest first).
+  const sortedItems = (() => {
+    if (sortMode === 'latest') return filteredItems;
+    const arr = [...filteredItems];
+    if (sortMode === 'popular') {
+      arr.sort((a, b) => (b.likes + b.saves) - (a.likes + a.saves));
+    } else {
+      // 'relevant': rank by how many of the user's interests an item matches,
+      // tie-broken by popularity.
+      const relevance = (it: FeedItem) =>
+        lowerInterests.reduce(
+          (n, i) =>
+            n +
+            (it.category.toLowerCase().includes(i) ||
+            it.tags.some(t => t.toLowerCase().includes(i))
+              ? 1
+              : 0),
+          0,
+        );
+      arr.sort((a, b) => {
+        const d = relevance(b) - relevance(a);
+        return d !== 0 ? d : (b.likes + b.saves) - (a.likes + a.saves);
+      });
+    }
+    return arr;
+  })();
 
   const handleLike = (id: string) => {
     setItems(prev =>
@@ -745,6 +797,38 @@ export default function FeedScreen() {
         </Pressable>
       </Modal>
 
+      <Modal
+        visible={sortMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSortMenuOpen(false)}
+      >
+        <Pressable style={styles.langBackdrop} onPress={() => setSortMenuOpen(false)}>
+          <View style={[styles.langMenu, { top: sortMenuPos.top, left: sortMenuPos.left }]}>
+            {SORT_OPTIONS.map((opt, i) => {
+              const active = sortMode === opt.mode;
+              return (
+                <React.Fragment key={opt.mode}>
+                  {i > 0 ? <View style={styles.langMenuDivider} /> : null}
+                  <TouchableOpacity
+                    style={styles.langMenuItem}
+                    activeOpacity={0.7}
+                    onPress={() => selectSort(opt.mode)}
+                    accessibilityRole="menuitem"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text style={[styles.langMenuText, active && styles.langMenuTextActive]}>
+                      {opt.label}
+                    </Text>
+                    {active ? <Text style={styles.langMenuCheck}>✓</Text> : null}
+                  </TouchableOpacity>
+                </React.Fragment>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
+
       <Animated.View
         onLayout={(e: { nativeEvent: { layout: { height: number } } }) => {
           const h = e.nativeEvent.layout.height;
@@ -801,7 +885,7 @@ export default function FeedScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredItems}
+          data={sortedItems}
           keyExtractor={item => item.id}
           contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 120, gap: 20 }}
           showsVerticalScrollIndicator={false}
@@ -945,12 +1029,21 @@ export default function FeedScreen() {
                 </View>
               ) : null}
 
-              {/* LATEST — editorial section divider */}
-              {filteredItems.length > 0 ? (
+              {/* Sort selector — doubles as the editorial section divider */}
+              {sortedItems.length > 0 ? (
                 <View style={styles.streamLabel}>
-                  <Text style={styles.streamLabelText}>LATEST</Text>
+                  <TouchableOpacity
+                    ref={sortLabelRef}
+                    onPress={openSortMenu}
+                    activeOpacity={0.7}
+                    style={styles.streamLabelBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel="Change feed sort order"
+                  >
+                    <Text style={styles.streamLabelText}>{sortLabel.toUpperCase()}</Text>
+                    <Text style={styles.streamCaret}>▾</Text>
+                  </TouchableOpacity>
                   <View style={styles.streamRule} />
-                  <Text style={styles.streamCount}>{filteredItems.length} {filteredItems.length === 1 ? 'story' : 'stories'}</Text>
                 </View>
               ) : null}
             </View>
@@ -1616,21 +1709,26 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 4,
   },
+  streamLabelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
   streamLabelText: {
     fontFamily: Fonts.sansBold,
     fontSize: 11,
     letterSpacing: 1.6,
     color: Colors.textSecondary,
   },
+  streamCaret: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 1,
+  },
   streamRule: {
     flex: 1,
     height: 1,
     backgroundColor: Colors.hairlineGold,
-  },
-  streamCount: {
-    fontFamily: Fonts.mono,
-    fontSize: 11,
-    color: Colors.textMuted,
   },
   // kept for legacy style references (unused in new layout but avoids TS errors)
   cardHook: {
