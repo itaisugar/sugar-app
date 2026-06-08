@@ -204,6 +204,45 @@ function ArticleCarousel({
   const height = Math.round(w * 1.25); // Instagram-style 4:5 portrait
   const pages = slides.length + 2; // cover + content slides + CTA
 
+  // Controlled paging: one swipe = at most one page, regardless of fling
+  // strength. A weak swipe (less than half a page) settles back to the current
+  // page. We drive this ourselves (rather than pagingEnabled) so a hard fling
+  // can't carry across multiple pages on web, where momentum-snap travels far.
+  const scrollRef = useRef<ScrollView>(null);
+  const startPage = useRef(0); // page the active gesture began on
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isPaging = useRef(false); // true while our own glide runs
+
+  const goToPage = (p: number) => {
+    const target = Math.max(0, Math.min(pages - 1, p));
+    startPage.current = target;
+    isPaging.current = true;
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    scrollRef.current?.scrollTo({ x: target * w, animated: true });
+    setIdx(target);
+    setTimeout(() => { isPaging.current = false; }, 300);
+  };
+
+  const handleScroll = (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+    if (!w) return;
+    const x = e.nativeEvent.contentOffset.x;
+    const cur = Math.round(x / w);
+    if (cur !== idx) setIdx(cur); // keep the dots live while swiping
+    if (isPaging.current) return; // ignore events from our own glide
+    // Hard cap: never let a single swipe cross more than one page.
+    if (x > (startPage.current + 1) * w + 1) return goToPage(startPage.current + 1);
+    if (x < (startPage.current - 1) * w - 1) return goToPage(startPage.current - 1);
+    // Settle onto the nearest page (clamped to ±1) once the scroll goes idle.
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => {
+      const landed = Math.max(
+        startPage.current - 1,
+        Math.min(startPage.current + 1, Math.round(x / w)),
+      );
+      goToPage(landed);
+    }, 90);
+  };
+
   return (
     <View
       onLayout={(e) => {
@@ -212,19 +251,15 @@ function ArticleCarousel({
       }}
     >
       <ScrollView
+        ref={scrollRef}
         horizontal
-        pagingEnabled
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
-        // Update the page dots live as you swipe — onMomentumScrollEnd alone is
-        // unreliable on web (it often doesn't fire), so drive idx from onScroll
-        // and keep momentum-end as a snap-to-final safety net.
-        onScroll={(e) => {
-          if (!w) return;
-          const next = Math.round(e.nativeEvent.contentOffset.x / w);
-          if (next !== idx) setIdx(next);
+        decelerationRate="fast"
+        onScrollBeginDrag={(e) => {
+          if (w) startPage.current = Math.round(e.nativeEvent.contentOffset.x / w);
         }}
-        onMomentumScrollEnd={(e) => w && setIdx(Math.round(e.nativeEvent.contentOffset.x / w))}
+        onScroll={handleScroll}
       >
         {/* Cover */}
         <Pressable onPress={onOpen} style={{ width: w, height }}>
