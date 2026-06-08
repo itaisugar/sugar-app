@@ -1304,6 +1304,7 @@ export default function FeedScreen() {
 
               {/* Daily quote — compact */}
               <View style={styles.quoteCard}>
+                <Text style={styles.quoteHeading}>Quote Of The Day</Text>
                 <Text style={styles.quoteText}>"{quote.text}"</Text>
                 <Text style={styles.quoteAuthor}>— {quote.author}{quote.source ? `, ${quote.source}` : ''}</Text>
               </View>
@@ -1662,6 +1663,14 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderLeftColor: Colors.primary,
     gap: 4,
+  },
+  quoteHeading: {
+    fontSize: 10,
+    fontFamily: Fonts.sansSemibold,
+    color: Colors.textFaint,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 2,
   },
   quoteText: {
     fontFamily: Fonts.serifItalic,
