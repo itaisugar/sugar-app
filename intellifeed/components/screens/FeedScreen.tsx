@@ -1086,8 +1086,14 @@ export default function FeedScreen() {
           contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 160, gap: FEED_GAP }}
           showsVerticalScrollIndicator={false}
           onLayout={e => {
+            // Only ever grow listH. The collapsible header above the list shrinks
+            // while you scroll, which makes the FlatList's measured height churn
+            // every frame — if the snap target tracked that, snapping would nudge
+            // the scroll, which moved the header, which moved the target… a
+            // feedback loop that showed up as small up/down jitter after locking.
+            // Pinning to the (stable) collapsed-state height breaks the loop.
             const h = e.nativeEvent.layout.height;
-            if (h && Math.abs(h - listH) > 1) setListH(h);
+            if (h && h > listH + 1) setListH(h);
           }}
           onScroll={onFeedScroll}
           scrollEventThrottle={16}
