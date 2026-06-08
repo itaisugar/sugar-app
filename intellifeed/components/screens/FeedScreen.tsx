@@ -50,16 +50,16 @@ const LANGUAGE_OPTIONS: { code: Language; label: string }[] = [
 
 // A clean, monochrome line-art globe — tinted by `color` so it can sit quietly
 // in the header and warm to the accent when its menu is open.
-function GlobeIcon({ color, size = 19 }: { color: string; size?: number }) {
+function GlobeIcon({ color, size = 20 }: { color: string; size?: number }) {
   const c = size / 2;
-  const r = size / 2 - 1.25;
+  const r = size / 2 - 1.5;
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <Circle cx={c} cy={c} r={r} stroke={color} strokeWidth={1.4} fill="none" />
-      <Ellipse cx={c} cy={c} rx={r * 0.5} ry={r} stroke={color} strokeWidth={1.4} fill="none" />
-      <Line x1={c - r} y1={c} x2={c + r} y2={c} stroke={color} strokeWidth={1.4} />
-      <Line x1={c - r * 0.84} y1={c - r * 0.5} x2={c + r * 0.84} y2={c - r * 0.5} stroke={color} strokeWidth={1.1} />
-      <Line x1={c - r * 0.84} y1={c + r * 0.5} x2={c + r * 0.84} y2={c + r * 0.5} stroke={color} strokeWidth={1.1} />
+      <Circle cx={c} cy={c} r={r} stroke={color} strokeWidth={1.8} fill="none" />
+      <Ellipse cx={c} cy={c} rx={r * 0.5} ry={r} stroke={color} strokeWidth={1.8} fill="none" />
+      <Line x1={c - r} y1={c} x2={c + r} y2={c} stroke={color} strokeWidth={1.8} />
+      <Line x1={c - r * 0.84} y1={c - r * 0.5} x2={c + r * 0.84} y2={c - r * 0.5} stroke={color} strokeWidth={1.5} />
+      <Line x1={c - r * 0.84} y1={c + r * 0.5} x2={c + r * 0.84} y2={c + r * 0.5} stroke={color} strokeWidth={1.5} />
     </Svg>
   );
 }
@@ -1013,6 +1013,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: Radius.full,
     backgroundColor: Colors.black,
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
   },
   streakText: {
     fontSize: 11,

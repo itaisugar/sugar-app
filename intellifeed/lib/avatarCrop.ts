@@ -139,18 +139,6 @@ export async function cropAvatar(file: File): Promise<File | null> {
     frame.appendChild(imgEl);
     frame.appendChild(circle);
 
-    // Zoom slider (mainly for desktop / accessibility).
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '1';
-    slider.max = String(MAX_ZOOM);
-    slider.step = '0.01';
-    slider.value = '1';
-    Object.assign(slider.style, {
-      width: `${vp}px`,
-      accentColor: C.primary,
-    } as Partial<CSSStyleDeclaration>);
-
     const buttons = document.createElement('div');
     Object.assign(buttons.style, {
       display: 'flex',
@@ -180,7 +168,6 @@ export async function cropAvatar(file: File): Promise<File | null> {
 
     overlay.appendChild(title);
     overlay.appendChild(frame);
-    overlay.appendChild(slider);
     overlay.appendChild(buttons);
     document.body.appendChild(overlay);
 
@@ -205,7 +192,6 @@ export async function cropAvatar(file: File): Promise<File | null> {
       ty = fy - ((fy - ty) * newScale) / scale;
       zoom = nextZoom;
       scale = newScale;
-      slider.value = String(zoom);
       render();
     };
 
@@ -265,14 +251,11 @@ export async function cropAvatar(file: File): Promise<File | null> {
       applyZoom(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1), x, y);
     };
 
-    const onSlider = () => applyZoom(parseFloat(slider.value), vp / 2, vp / 2);
-
     frame.addEventListener('pointerdown', onPointerDown);
     frame.addEventListener('pointermove', onPointerMove);
     frame.addEventListener('pointerup', onPointerUp);
     frame.addEventListener('pointercancel', onPointerUp);
     frame.addEventListener('wheel', onWheel, { passive: false });
-    slider.addEventListener('input', onSlider);
 
     // ---- finish -------------------------------------------------------------
     const cleanup = () => {
