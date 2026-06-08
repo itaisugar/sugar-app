@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Switch,
   Alert,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -128,6 +130,7 @@ export default function ProfileScreen() {
   const [savedItems, setSavedItems] = useState<FeedItem[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const onChangeAvatar = async () => {
     if (avatarBusy || !user) return;
@@ -356,44 +359,12 @@ export default function ProfileScreen() {
               </View>
             ) : null}
 
-            {/* Email notifications */}
-            <View style={[styles.card, { padding: Spacing.lg }]}>
-              <Text style={[styles.faintKicker, { marginBottom: 4 }]}>EMAIL NOTIFICATIONS</Text>
-              <Text style={styles.notifyHint}>
-                Sent to {displayEmail || 'your email'} based on what you turn on below.
-              </Text>
-              <View style={styles.notifyRow}>
-                <View style={{ flex: 1, paddingRight: 12 }}>
-                  <Text style={styles.notifyLabel}>New follower</Text>
-                  <Text style={styles.notifySub}>When someone starts following you.</Text>
-                </View>
-                <Switch
-                  value={dbProfile.notify_new_follower ?? true}
-                  onValueChange={(v) => toggleNotify('notify_new_follower', v)}
-                  trackColor={{ false: Colors.border, true: Colors.primary }}
-                  thumbColor={Colors.white}
-                />
-              </View>
-              <View style={[styles.notifyRow, styles.notifyRowLast]}>
-                <View style={{ flex: 1, paddingRight: 12 }}>
-                  <Text style={styles.notifyLabel}>New article in your fields</Text>
-                  <Text style={styles.notifySub}>When a piece is published in a domain you chose.</Text>
-                </View>
-                <Switch
-                  value={dbProfile.notify_new_content ?? true}
-                  onValueChange={(v) => toggleNotify('notify_new_content', v)}
-                  trackColor={{ false: Colors.border, true: Colors.primary }}
-                  thumbColor={Colors.white}
-                />
-              </View>
-            </View>
-
             {/* Settings */}
             <View style={[styles.card, { overflow: 'hidden' }]}>
               {([
                 ...(dbProfile.is_admin ? [{ label: 'Editorial Desk', onPress: () => router.push('/admin') }] : []),
                 { label: 'Account Settings', onPress: () => {} },
-                { label: 'Notifications', onPress: () => {} },
+                { label: 'Notifications', onPress: () => setNotifOpen(true) },
                 { label: 'Refine Interests', onPress: () => router.push('/edit-profile') },
               ]).map((it, i, arr) => (
                 <TouchableOpacity key={it.label} onPress={it.onPress} style={[styles.settingsRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}>
@@ -411,6 +382,52 @@ export default function ProfileScreen() {
           </View>
         </EntranceView>
       </ScrollView>
+
+      {/* Notifications panel — opens from the "Notifications" settings row */}
+      <Modal
+        visible={notifOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setNotifOpen(false)}
+      >
+        <Pressable style={styles.notifBackdrop} onPress={() => setNotifOpen(false)}>
+          <Pressable style={styles.notifPanel} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.notifPanelHeader}>
+              <Text style={[styles.faintKicker, { letterSpacing: 1.4 }]}>EMAIL NOTIFICATIONS</Text>
+              <TouchableOpacity onPress={() => setNotifOpen(false)} hitSlop={12}>
+                <Text style={styles.notifClose}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.notifyHint}>
+              Sent to {displayEmail || 'your email'} based on what you turn on below.
+            </Text>
+            <View style={styles.notifyRow}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={styles.notifyLabel}>New follower</Text>
+                <Text style={styles.notifySub}>When someone starts following you.</Text>
+              </View>
+              <Switch
+                value={dbProfile.notify_new_follower ?? true}
+                onValueChange={(v) => toggleNotify('notify_new_follower', v)}
+                trackColor={{ false: Colors.border, true: Colors.primary }}
+                thumbColor={Colors.white}
+              />
+            </View>
+            <View style={[styles.notifyRow, styles.notifyRowLast]}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={styles.notifyLabel}>New article in your fields</Text>
+                <Text style={styles.notifySub}>When a piece is published in a domain you chose.</Text>
+              </View>
+              <Switch
+                value={dbProfile.notify_new_content ?? true}
+                onValueChange={(v) => toggleNotify('notify_new_content', v)}
+                trackColor={{ false: Colors.border, true: Colors.primary }}
+                thumbColor={Colors.white}
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -457,6 +474,15 @@ const styles = StyleSheet.create({
   notifyRowLast: { borderBottomWidth: 0 },
   notifyLabel: { fontFamily: Fonts.sansSemibold, fontSize: 14, color: Colors.textPrimary },
   notifySub: { fontFamily: Fonts.sans, fontSize: 12, lineHeight: 16, color: Colors.textMuted, marginTop: 2 },
+
+  // Notifications panel (modal)
+  notifBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: Spacing.lg },
+  notifPanel: {
+    backgroundColor: Colors.surfaceElevated, borderRadius: Radius.card,
+    borderWidth: 1, borderColor: Colors.borderStrong, padding: Spacing.lg, ...Shadow.lg,
+  },
+  notifPanelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  notifClose: { fontFamily: Fonts.sansSemibold, fontSize: 14, color: Colors.primary },
   heroName: { fontFamily: Fonts.display, fontSize: 24, letterSpacing: -0.4, color: Colors.textPrimary, marginTop: 14 },
   tierChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8,
