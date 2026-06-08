@@ -333,6 +333,28 @@ function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSa
     router.push({ pathname: '/article/[id]', params: { id: item.id } });
   };
 
+  // Share the article: native share sheet where available (mobile browsers),
+  // otherwise copy the link to the clipboard.
+  const onShare = async () => {
+    const url =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/article/${item.id}`
+        : '';
+    try {
+      const nav: any = typeof navigator !== 'undefined' ? navigator : undefined;
+      if (nav?.share) {
+        await nav.share({ title: item.title, text: item.title, url });
+        return;
+      }
+      if (nav?.clipboard?.writeText) {
+        await nav.clipboard.writeText(url);
+        Alert.alert('Link copied', 'Article link copied to clipboard.');
+      }
+    } catch {
+      // User dismissed the share sheet, or sharing was blocked — ignore.
+    }
+  };
+
   const categoryStyle = getCategoryStyle(item.category);
   const tint = categoryStyle.gradientEnd;
 
@@ -461,7 +483,7 @@ function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSa
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionBtn}>
+        <TouchableOpacity style={styles.actionBtn} onPress={onShare} accessibilityLabel="Share article">
           <Text style={styles.actionIcon}>↗</Text>
         </TouchableOpacity>
       </View>
