@@ -547,11 +547,22 @@ const FOCUS_SLOT_H = Math.round(FOCUS_CARD_W * 1.25) + 98; // carousel + audio s
 const FEED_GAP = 20; // vertical gap between cards (mirrors the list contentContainer gap)
 const FOCUS_MIN_SCALE = 0.88; // off-centre cards shrink to this…
 const FOCUS_MIN_OPACITY = 0.42; // …and dim to this, so the centred card dominates
+const FOCUS_BOTTOM_REST = 110; // keep the actions row at least this far above the viewport bottom (clears the tab bar)
+const FOCUS_MIN_TOP = 10; // …but never crop more than this off the card's top to get there
 
-// The contentOffset.y at which card `index` sits dead-centre in the viewport —
-// also the value we snap to, so the scale peaks exactly at the rest position.
+// The contentOffset.y at which card `index` comes to rest. We bias it slightly
+// above dead-centre: centring a card that's shorter than the viewport wastes a
+// gap above it while the actions row (the card's bottom) can slip under the tab
+// bar and become un-tappable. Spending that top gap to raise the card lifts
+// like / save / share into a comfortable tap zone. The scale peak uses the same
+// offset, so focus still lands exactly where the card rests.
 function focusRestOffset(index: number, base: number, viewportH: number) {
-  return base + index * (FOCUS_SLOT_H + FEED_GAP) + FOCUS_SLOT_H / 2 - viewportH / 2;
+  const cardTop = base + index * (FOCUS_SLOT_H + FEED_GAP);
+  const centered = cardTop + FOCUS_SLOT_H / 2 - viewportH / 2;
+  const halfGap = (viewportH - FOCUS_SLOT_H) / 2; // empty space above (and below) when centred
+  const maxRaise = Math.max(0, halfGap - FOCUS_MIN_TOP); // how far we can raise before cropping the top
+  const desiredRaise = Math.max(0, FOCUS_BOTTOM_REST - halfGap); // how far we'd like to raise to clear the tab bar
+  return centered + Math.min(desiredRaise, maxRaise);
 }
 
 function FocusCard({
