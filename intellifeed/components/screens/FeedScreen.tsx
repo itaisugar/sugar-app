@@ -491,6 +491,66 @@ function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSa
   );
 }
 
+// ─── Magnetic-focus feed geometry ───────────────────────────────────────────
+// Each card lives in a fixed-height "slot" so we can (a) snap one article into
+// place at a time and (b) scale/dim the off-centre cards. The slot height is
+// derived deterministically from the card's own layout: the 4:5 carousel plus
+// the audio strip, actions row and card borders — so it tracks the real card
+// height without measuring every item.
+const WIN_W = Dimensions.get('window').width;
+const FOCUS_CARD_W = WIN_W - Spacing.lg * 2 - 2; // matches the carousel's own width math
+const FOCUS_SLOT_H = Math.round(FOCUS_CARD_W * 1.25) + 98; // carousel + audio strip + actions + borders
+const FEED_GAP = 20; // vertical gap between cards (mirrors the list contentContainer gap)
+const FOCUS_MIN_SCALE = 0.88; // off-centre cards shrink to this…
+const FOCUS_MIN_OPACITY = 0.42; // …and dim to this, so the centred card dominates
+
+// The contentOffset.y at which card `index` sits dead-centre in the viewport —
+// also the value we snap to, so the scale peaks exactly at the rest position.
+function focusRestOffset(index: number, base: number, viewportH: number) {
+  return base + index * (FOCUS_SLOT_H + FEED_GAP) + FOCUS_SLOT_H / 2 - viewportH / 2;
+}
+
+function FocusCard({
+  scrollY,
+  index,
+  base,
+  viewportH,
+  children,
+}: {
+  scrollY: Animated.Value;
+  index: number;
+  base: number;
+  viewportH: number;
+  children: React.ReactNode;
+}) {
+  const ready = base > 0 && viewportH > 0;
+  const rest = focusRestOffset(index, base, viewportH);
+  const span = FOCUS_SLOT_H + FEED_GAP; // fully shrunk one card away from centre
+  const anim = ready
+    ? {
+        opacity: scrollY.interpolate({
+          inputRange: [rest - span, rest, rest + span],
+          outputRange: [FOCUS_MIN_OPACITY, 1, FOCUS_MIN_OPACITY],
+          extrapolate: 'clamp' as const,
+        }),
+        transform: [
+          {
+            scale: scrollY.interpolate({
+              inputRange: [rest - span, rest, rest + span],
+              outputRange: [FOCUS_MIN_SCALE, 1, FOCUS_MIN_SCALE],
+              extrapolate: 'clamp' as const,
+            }),
+          },
+        ],
+      }
+    : null;
+  return (
+    <Animated.View style={[{ height: FOCUS_SLOT_H, justifyContent: 'center' }, anim]}>
+      {children}
+    </Animated.View>
+  );
+}
+
 export default function FeedScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
@@ -527,6 +587,13 @@ export default function FeedScreen() {
   const offset = useRef(0);
   const lastY = useRef(0);
   const [topH, setTopH] = useState(0);
+
+  // Magnetic-focus feed: measure the list viewport and its header so we can place
+  // each card's snap point (and scale peak) at the exact contentOffset that
+  // centres it. `feedBase` is the y of the first card inside the list content.
+  const [listH, setListH] = useState(0);
+  const [headerH, setHeaderH] = useState(0);
+  const feedBase = headerH > 0 ? Spacing.lg + headerH + FEED_GAP : 0;
 
   useEffect(() => {
     const id = scrollY.addListener(({ value }) => {
@@ -730,6 +797,14 @@ export default function FeedScreen() {
     return arr;
   })();
 
+  // One snap point per card, at the offset that centres it. Computed (rather than
+  // relying on snapToInterval) so the variable-height header doesn't throw the
+  // snap points out of alignment. Undefined until we've measured the layout.
+  const snapOffsets =
+    feedBase > 0 && listH > 0
+      ? sortedItems.map((_, i) => Math.max(0, focusRestOffset(i, feedBase, listH)))
+      : undefined;
+
   const handleLike = (id: string) => {
     setItems(prev =>
       prev.map(item =>
@@ -923,10 +998,16 @@ export default function FeedScreen() {
         <FlatList
           data={sortedItems}
           keyExtractor={item => item.id}
-          contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 120, gap: 20 }}
+          contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 160, gap: FEED_GAP }}
           showsVerticalScrollIndicator={false}
+          onLayout={e => {
+            const h = e.nativeEvent.layout.height;
+            if (h && Math.abs(h - listH) > 1) setListH(h);
+          }}
           onScroll={onFeedScroll}
           scrollEventThrottle={16}
+          snapToOffsets={snapOffsets}
+          decelerationRate="fast"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -935,7 +1016,13 @@ export default function FeedScreen() {
             />
           }
           ListHeaderComponent={
-            <View style={{ gap: 16, marginBottom: 4 }}>
+            <View
+              onLayout={e => {
+                const h = e.nativeEvent.layout.height;
+                if (h && Math.abs(h - headerH) > 1) setHeaderH(h);
+              }}
+              style={{ gap: 10, marginBottom: 4 }}
+            >
               {/* Today's Briefing — gradient banner */}
               {items.length >= 1 ? (
                 <View>
@@ -1085,14 +1172,16 @@ export default function FeedScreen() {
             </View>
           }
           renderItem={({ item, index }) => (
-            <EntranceView delay={Math.min(index, 6) * 45}>
-              <FeedCard
-                item={item}
-                lead={index === 0}
-                onLike={() => handleLike(item.id)}
-                onSave={() => handleSave(item.id)}
-              />
-            </EntranceView>
+            <FocusCard scrollY={scrollY} index={index} base={feedBase} viewportH={listH}>
+              <EntranceView delay={Math.min(index, 6) * 45}>
+                <FeedCard
+                  item={item}
+                  lead={index === 0}
+                  onLike={() => handleLike(item.id)}
+                  onSave={() => handleSave(item.id)}
+                />
+              </EntranceView>
+            </FocusCard>
           )}
           ListEmptyComponent={
             items.length === 0 ? (
@@ -1302,7 +1391,7 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.base,
-    paddingVertical: 14,
+    paddingVertical: 11,
     borderWidth: 1,
     borderColor: Colors.hairlineGold,
     overflow: 'hidden',
