@@ -87,53 +87,77 @@ const SOURCE_LABELS: Record<string, string> = {
 
 // Carousel design rules (one "fact" per slide, short & punchy):
 //   • One idea per slide — the cover is the hook, each body paragraph is a fact.
-//   • ~3-5 short lines / 20-35 words per slide so the card never feels dense.
+//   • A slide covers only the lower ~half of the image: 4-5 short lines max,
+//     so we hard-cap each slide at ~30 words and split anything longer.
 //   • 5-8 total slides is the engagement "golden zone"; cover + CTA take two of
 //     those, so content slides are capped at 6.
-// The AI now authors `summary` as \n\n-delimited, self-contained paragraphs, so
-// we slide on paragraphs first and only fall back to sentence-grouping for older
-// single-blob summaries.
-const MAX_WORDS_PER_SLIDE = 35;
+// New content arrives as \n\n-delimited one-idea paragraphs; legacy content is a
+// few long paragraphs. Either way we cap every slide to the word limit.
+const MAX_WORDS_PER_SLIDE = 30;
 const MAX_CONTENT_SLIDES = 6;
 
 function wordCount(s: string): number {
   return s.split(/\s+/).filter(Boolean).length;
 }
 
-function splitIntoSlides(lede: string | null, body: string | null): string[] {
-  const bodyText = (body ?? '').trim();
+// Last resort for a clause that still exceeds the cap: break on word count.
+function chunkByWords(text: string): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const out: string[] = [];
+  for (let i = 0; i < words.length; i += MAX_WORDS_PER_SLIDE) {
+    out.push(words.slice(i, i + MAX_WORDS_PER_SLIDE).join(' '));
+  }
+  return out;
+}
 
-  // Preferred path: the summary is already authored as one-idea-per-paragraph.
+// Break one paragraph into slides of <= MAX_WORDS_PER_SLIDE. We group whole
+// sentences where we can; an over-long sentence is split on clause boundaries
+// (commas, dashes, colons) and only word-wrapped as a last resort.
+function chunkParagraph(p: string): string[] {
+  const sentences = (p.match(/[^.!?…]+[.!?…]+/g) ?? [p]).map((s) => s.trim()).filter(Boolean);
+  const slides: string[] = [];
+  let cur: string[] = [];
+  let curWords = 0;
+  const flush = () => {
+    if (cur.length) { slides.push(cur.join(' ')); cur = []; curWords = 0; }
+  };
+  const pushUnit = (unit: string) => {
+    const w = wordCount(unit);
+    if (cur.length && curWords + w > MAX_WORDS_PER_SLIDE) flush();
+    cur.push(unit);
+    curWords += w;
+  };
+  for (const s of sentences) {
+    if (wordCount(s) <= MAX_WORDS_PER_SLIDE) { pushUnit(s); continue; }
+    // Over-long sentence — flush, then break it into clauses.
+    flush();
+    const clauses = (s.match(/[^,;:—–]+[,;:—–]?/g) ?? [s]).map((c) => c.trim()).filter(Boolean);
+    for (const c of clauses) {
+      if (wordCount(c) <= MAX_WORDS_PER_SLIDE) pushUnit(c);
+      else { flush(); for (const piece of chunkByWords(c)) slides.push(piece); }
+    }
+    flush();
+  }
+  flush();
+  return slides;
+}
+
+function splitIntoSlides(lede: string | null, body: string | null): string[] {
+  const bodyText = (body ?? '').trim() || (lede ?? '').trim();
+  if (!bodyText) return [];
   const paragraphs = bodyText
     .split(/\n{2,}/)
     .map((p) => p.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
-  if (paragraphs.length >= 2) {
-    return paragraphs.slice(0, MAX_CONTENT_SLIDES);
-  }
-
-  // Fallback: legacy single-blob summary — group sentences into word-capped
-  // slides. The cover already carries the hook, so the lede only seeds the
-  // fallback when there's no body text at all.
-  const text = bodyText || (lede ?? '').trim();
-  if (!text) return [];
-  const sentences = (text.match(/[^.!?…]+[.!?…]+/g) ?? [text]).map((s) => s.trim()).filter(Boolean);
 
   const slides: string[] = [];
-  let cur: string[] = [];
-  let curWords = 0;
-  for (const s of sentences) {
-    const w = wordCount(s);
-    if (cur.length && curWords + w > MAX_WORDS_PER_SLIDE) {
-      slides.push(cur.join(' '));
-      cur = [];
-      curWords = 0;
+  for (const p of paragraphs) {
+    for (const chunk of chunkParagraph(p)) {
+      slides.push(chunk);
+      if (slides.length >= MAX_CONTENT_SLIDES) return slides;
     }
-    cur.push(s);
-    curWords += w;
   }
-  if (cur.length) slides.push(cur.join(' '));
-  return slides.slice(0, MAX_CONTENT_SLIDES);
+  return slides;
 }
 
 // Bold any numeric tokens (prices, percentages) inside a slide line — mirrors the
