@@ -583,10 +583,20 @@ export default function FeedScreen() {
         fetchJoinedClubsActivity(),
         fetchFollowedActivity(),
       ]);
-      // De-duplicate by id so the same article can never show up twice on the
-      // feed (whether back-to-back or spaced apart), keeping the first occurrence.
+      // De-duplicate so the same article can never show up twice on the feed
+      // (whether back-to-back or spaced apart), keeping the first occurrence.
+      // Keyed by canonical content URL when available, else by normalized title,
+      // so duplicate DB rows that share content but have different ids are caught.
       const seen = new Set<string>();
-      const unique = data.filter(d => (seen.has(d.id) ? false : (seen.add(d.id), true)));
+      const dedupeKey = (d: typeof data[number]) => {
+        const url = d.contentUrl?.trim().toLowerCase();
+        if (url) return `u:${url}`;
+        return `t:${d.title.trim().toLowerCase().replace(/\s+/g, ' ')}`;
+      };
+      const unique = data.filter(d => {
+        const k = dedupeKey(d);
+        return seen.has(k) ? false : (seen.add(k), true);
+      });
       const savedIds = await getSavedSubset(unique.map(d => d.id));
       setItems(unique.map(d => ({ ...d, isSaved: savedIds.has(d.id) })));
       setClubActivity(activity);
