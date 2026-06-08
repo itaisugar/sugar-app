@@ -604,6 +604,26 @@ export default function FeedScreen() {
   const [headerH, setHeaderH] = useState(0);
   const feedBase = headerH > 0 ? Spacing.lg + headerH + FEED_GAP : 0;
 
+  // JS-driven magnetism: snapToOffsets is a native-only momentum feature and is
+  // effectively ignored on web, so we snap ourselves. When scrolling goes idle
+  // we glide to the nearest card's offset — making the feed "lock on" reliably
+  // on web and reinforcing the native snap elsewhere.
+  const listRef = useRef<FlatList>(null);
+  const snapOffsetsRef = useRef<number[] | undefined>(undefined);
+  const snapIdle = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const snapToNearest = useCallback((y: number) => {
+    const offsets = snapOffsetsRef.current;
+    if (!offsets || offsets.length === 0) return;
+    let best = offsets[0];
+    for (const o of offsets) {
+      if (Math.abs(o - y) < Math.abs(best - y)) best = o;
+    }
+    if (Math.abs(best - y) > 1) {
+      listRef.current?.scrollToOffset({ offset: best, animated: true });
+    }
+  }, []);
+
   useEffect(() => {
     const id = scrollY.addListener(({ value }) => {
       const max = topH;
@@ -626,7 +646,16 @@ export default function FeedScreen() {
 
   const onFeedScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: false },
+    {
+      useNativeDriver: false,
+      // Detect "scroll idle" (no scroll events for a short beat) and snap to the
+      // nearest card. The short delay keeps it from fighting an active drag.
+      listener: (e: any) => {
+        const y = e.nativeEvent.contentOffset.y;
+        if (snapIdle.current) clearTimeout(snapIdle.current);
+        snapIdle.current = setTimeout(() => snapToNearest(y), 80);
+      },
+    },
   );
 
   const collapsibleStyle = topH
@@ -813,6 +842,7 @@ export default function FeedScreen() {
     feedBase > 0 && listH > 0
       ? sortedItems.map((_, i) => Math.max(0, focusRestOffset(i, feedBase, listH)))
       : undefined;
+  snapOffsetsRef.current = snapOffsets;
 
   const handleLike = (id: string) => {
     setItems(prev =>
@@ -1005,6 +1035,7 @@ export default function FeedScreen() {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={sortedItems}
           keyExtractor={item => item.id}
           contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 160, gap: FEED_GAP }}
