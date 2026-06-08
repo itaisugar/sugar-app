@@ -611,6 +611,9 @@ export default function FeedScreen() {
   const listRef = useRef<FlatList>(null);
   const snapOffsetsRef = useRef<number[] | undefined>(undefined);
   const snapIdle = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True while our own glide is running, so the scroll events it emits don't
+  // re-trigger another snap (which caused the jitter between cards).
+  const isSnapping = useRef(false);
 
   const snapToNearest = useCallback((y: number) => {
     const offsets = snapOffsetsRef.current;
@@ -619,8 +622,13 @@ export default function FeedScreen() {
     for (const o of offsets) {
       if (Math.abs(o - y) < Math.abs(best - y)) best = o;
     }
-    if (Math.abs(best - y) > 1) {
+    // Dead-zone: ignore sub-pixel/tiny gaps so we never fire a snap that does
+    // nothing but emit events.
+    if (Math.abs(best - y) > 3) {
+      isSnapping.current = true;
       listRef.current?.scrollToOffset({ offset: best, animated: true });
+      // Release the guard after the glide is expected to have settled.
+      setTimeout(() => { isSnapping.current = false; }, 360);
     }
   }, []);
 
@@ -649,11 +657,13 @@ export default function FeedScreen() {
     {
       useNativeDriver: false,
       // Detect "scroll idle" (no scroll events for a short beat) and snap to the
-      // nearest card. The short delay keeps it from fighting an active drag.
+      // nearest card. Ignore events emitted by our own glide so it can't chain
+      // into another snap, and keep the delay short enough to feel immediate.
       listener: (e: any) => {
+        if (isSnapping.current) return;
         const y = e.nativeEvent.contentOffset.y;
         if (snapIdle.current) clearTimeout(snapIdle.current);
-        snapIdle.current = setTimeout(() => snapToNearest(y), 80);
+        snapIdle.current = setTimeout(() => snapToNearest(y), 110);
       },
     },
   );
@@ -1046,7 +1056,6 @@ export default function FeedScreen() {
           }}
           onScroll={onFeedScroll}
           scrollEventThrottle={16}
-          snapToOffsets={snapOffsets}
           decelerationRate="fast"
           refreshControl={
             <RefreshControl
