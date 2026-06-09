@@ -24,7 +24,7 @@ import Svg, { Circle, Ellipse, Line } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../constants/Theme';
 import { Equalizer, CatTag, GoldBadge, MemberFaces, EntranceView } from '../ui';
-import { PulsingSparkle } from '../BrandSplash';
+import BrandSplash, { PulsingSparkle } from '../BrandSplash';
 import { detectLinkKind, ctaLabelFor } from '../../lib/externalLinks';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../lib/AuthContext';
@@ -1094,6 +1094,13 @@ export default function FeedScreen() {
     }
   };
 
+  // Full-screen branded loading — identical layout to the boot splash so the
+  // hand-off is seamless: the logo stays at the same size/position and the
+  // wordmark only changes from "Sapience." to "Creating Your Sapience.".
+  if (loading) {
+    return <BrandSplash label="Creating Your Sapience" />;
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -1229,14 +1236,7 @@ export default function FeedScreen() {
         </View>
       </Animated.View>
 
-      {loading ? (
-        <View style={styles.fullState}>
-          <PulsingSparkle size={52} />
-          <Text style={styles.feedLoadingWord}>
-            Creating Your Sapience<Text style={{ color: Colors.primary }}>.</Text>
-          </Text>
-        </View>
-      ) : error ? (
+      {error ? (
         <View style={styles.fullState}>
           <Text style={TextStyles.emptyTitle}>Couldn't load the feed</Text>
           <Text style={[TextStyles.emptyDescription, { textAlign: 'center', paddingHorizontal: Spacing.xl, marginTop: 8 }]}>
@@ -2262,15 +2262,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: 80,
     gap: 8,
-  },
-  feedLoadingWord: {
-    fontFamily: Fonts.display,
-    fontSize: 18,
-    lineHeight: 22,
-    letterSpacing: -0.3,
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginTop: 14,
   },
   retryBtn: {
     marginTop: 16,
