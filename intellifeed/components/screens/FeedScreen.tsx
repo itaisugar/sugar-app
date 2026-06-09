@@ -1094,11 +1094,10 @@ export default function FeedScreen() {
     }
   };
 
-  // Full-screen branded loading — identical layout to the boot splash so the
-  // hand-off is seamless: the logo stays at the same size/position and the
-  // wordmark only changes from "Sapience." to "Creating Your Sapience.".
+  // Full-screen branded loading — the exact same boot splash, so the hand-off
+  // is invisible: same logo, same "Sapience." wordmark, no visible transition.
   if (loading) {
-    return <BrandSplash label="Creating Your Sapience" />;
+    return <BrandSplash />;
   }
 
   return (

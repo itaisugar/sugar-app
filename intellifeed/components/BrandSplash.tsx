@@ -74,16 +74,12 @@ export function PulsingSparkle({ size = 104 }: { size?: number }) {
   );
 }
 
-// `label` is the wordmark text before the crimson period. Defaults to the
-// "Sapience." mark for the boot splash; the feed's loading state passes
-// "Creating Your Sapience" so the hand-off is pixel-identical — same logo
-// size/position, same font/size, same distance — and only the words change.
-export default function BrandSplash({ label = 'Sapience' }: { label?: string }) {
+export default function BrandSplash() {
   return (
     <View style={styles.root}>
       <PulsingSparkle size={104} />
       <Text style={styles.word}>
-        {label}<Text style={styles.dot}>.</Text>
+        Sapience<Text style={styles.dot}>.</Text>
       </Text>
     </View>
   );
