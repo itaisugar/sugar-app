@@ -1222,7 +1222,7 @@ export default function FeedScreen() {
 
       {loading ? (
         <View style={styles.fullState}>
-          <PulsingSparkle size={84} />
+          <PulsingSparkle size={52} />
           <Text style={styles.feedLoadingWord}>
             Creating Your Sapience<Text style={{ color: Colors.primary }}>.</Text>
           </Text>
@@ -2256,12 +2256,12 @@ const styles = StyleSheet.create({
   },
   feedLoadingWord: {
     fontFamily: Fonts.display,
-    fontSize: 22,
-    lineHeight: 26,
+    fontSize: 18,
+    lineHeight: 22,
     letterSpacing: -0.3,
     color: '#FFFFFF',
     textAlign: 'center',
-    marginTop: 18,
+    marginTop: 14,
   },
   retryBtn: {
     marginTop: 16,
