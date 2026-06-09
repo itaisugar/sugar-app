@@ -1,7 +1,8 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { useEffect } from 'react';
+import BrandSplash from '../components/BrandSplash';
 import {
   useFonts as useInter,
   Inter_400Regular,
@@ -69,11 +70,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }, [session, authLoading, profile, profileLoading, segments]);
 
   if (authLoading || (session && profileLoading && !profile)) {
-    return (
-      <View style={{ flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color={Colors.primary} />
-      </View>
-    );
+    return <BrandSplash />;
   }
 
   return <>{children}</>;
@@ -98,11 +95,7 @@ export default function RootLayout() {
   });
 
   if (!interLoaded || !groteskLoaded || !monoLoaded) {
-    return (
-      <View style={{ flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color={Colors.primary} />
-      </View>
-    );
+    return <BrandSplash />;
   }
 
   return (
