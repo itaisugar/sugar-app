@@ -39,7 +39,9 @@
   "scripts": {
     "start": "expo start --web",
     "web": "expo start --web",
-    "build": "expo export --platform web"
+    "build": "expo export --platform web",
+    "deploy:functions": "node scripts/deploy-functions.mjs",
+    "backfill-he": "node scripts/backfill-he.mjs"
   },
   "private": true
 }
