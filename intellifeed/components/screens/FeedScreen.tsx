@@ -85,15 +85,18 @@ const SOURCE_LABELS: Record<string, string> = {
 // Turns a single article into a swipeable "post": a cover slide (image + title)
 // followed by readable text slides built from the hook + summary, then a CTA.
 
-// Carousel design rules (one "fact" per slide, short & punchy):
-//   • One idea per slide — the cover is the hook, each body paragraph is a fact.
-//   • A slide covers only the lower ~half of the image: 4-5 short lines max,
-//     so we hard-cap each slide at ~30 words and split anything longer.
+// Carousel design rules:
+//   • ONE complete idea per slide — a clear, self-contained thought beats an
+//     equal line count. We never cut an idea mid-thought to hit a fixed size.
+//   • Length is flexible: a crisp conclusion may be 3 lines, a richer point up
+//     to 5. So a well-authored paragraph (one idea, <= ~38 words) is shown whole
+//     as a single slide; the cover is the hook.
+//   • We only split a paragraph when it's genuinely oversized (legacy multi-idea
+//     prose). Splits land on SENTENCE boundaries first (complete thoughts);
+//     clause/word breaking is a last resort for a single runaway sentence.
 //   • 5-8 total slides is the engagement "golden zone"; cover + CTA take two of
 //     those, so content slides are capped at 6.
-// New content arrives as \n\n-delimited one-idea paragraphs; legacy content is a
-// few long paragraphs. Either way we cap every slide to the word limit.
-const MAX_WORDS_PER_SLIDE = 30;
+const MAX_WORDS_PER_SLIDE = 38;
 const MAX_CONTENT_SLIDES = 6;
 
 function wordCount(s: string): number {
