@@ -9,6 +9,9 @@ export type ContentItemRow = {
   title: string;
   hook: string | null;
   summary: string;
+  title_he: string | null;
+  hook_he: string | null;
+  summary_he: string | null;
   source: string;
   source_avatar: string | null;
   category: string;
@@ -34,6 +37,11 @@ export type FeedItem = {
   title: string;
   hook: string | null;
   summary: string;
+  // Hebrew stored on the row (feed path only); other surfaces fall back to
+  // on-demand translation, so these are optional.
+  titleHe?: string | null;
+  hookHe?: string | null;
+  summaryHe?: string | null;
   source: string;
   sourceAvatar: string;
   category: string;
@@ -73,6 +81,9 @@ function rowToFeedItem(row: ContentItemRow): FeedItem {
     title: row.title,
     hook: row.hook ?? null,
     summary: row.summary,
+    titleHe: row.title_he ?? null,
+    hookHe: row.hook_he ?? null,
+    summaryHe: row.summary_he ?? null,
     source: row.source,
     sourceAvatar: row.source_avatar ?? '◆',
     category: row.category,

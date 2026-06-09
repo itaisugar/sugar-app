@@ -13,7 +13,17 @@ type LanguageContextValue = {
   getTranslation: (id: string) => Translation | undefined;
   ensureTranslation: (id: string) => Promise<Translation>;
   ensureTranslations: (ids: string[]) => Promise<void>;
+  seedTranslations: (items: SeedItem[]) => void;
   pending: Set<string>;
+};
+
+// Hebrew already stored on the content row — seeded into the cache so a switch
+// to Hebrew is instant, with no round-trip.
+export type SeedItem = {
+  id: string;
+  titleHe: string | null;
+  hookHe: string | null;
+  summaryHe: string | null;
 };
 
 const STORAGE_KEY = 'sapience.language';
@@ -77,11 +87,27 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     [cache, pending],
   );
 
+  const seedTranslations = useCallback((items: SeedItem[]) => {
+    setCache((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const it of items) {
+        // Only seed rows that carry a full Hebrew payload, and never clobber a
+        // translation already in the cache (e.g. a fresh on-demand one).
+        if (it.titleHe && it.summaryHe && !next[it.id]) {
+          next[it.id] = { title_he: it.titleHe, hook_he: it.hookHe ?? null, summary_he: it.summaryHe };
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, []);
+
   const getTranslation = useCallback((id: string) => cache[id], [cache]);
 
   return (
     <LanguageContext.Provider
-      value={{ language, setLanguage, toggle, getTranslation, ensureTranslation, ensureTranslations, pending }}
+      value={{ language, setLanguage, toggle, getTranslation, ensureTranslation, ensureTranslations, seedTranslations, pending }}
     >
       {children}
     </LanguageContext.Provider>

@@ -9,6 +9,8 @@
 // Secrets required:
 //   ANTHROPIC_API_KEY=sk-ant-...
 
+import { localizeToHebrew } from '../_shared/hebrew.ts';
+
 // @ts-ignore — Deno globals
 declare const Deno: { env: { get(key: string): string | undefined } };
 
@@ -71,56 +73,10 @@ async function saveTranslation(
 }
 
 async function translate(row: Row): Promise<{ title_he: string; hook_he: string | null; summary_he: string }> {
-  const payload = {
-    title: row.title,
-    hook: row.hook ?? '',
-    summary: row.summary,
-  };
-
-  const sys = `You translate editorial English into natural, literary Hebrew suitable for an
-intellectual content app. Match register (calm, premium, journalistic). Keep proper
-names and English brand names in their original form. Preserve paragraph breaks in
-the summary exactly — every blank line ("\\n\\n") in the source MUST appear as a
-blank line in the translation. Do not merge paragraphs. Do not add commentary.
-Return STRICT JSON only — no markdown, no preface.`;
-
-  const user = `Translate these fields to Hebrew. Return JSON with keys "title", "hook", "summary".
-If "hook" is empty, return "".
-
-Source:
-${JSON.stringify(payload, null, 2)}`;
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY!,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 3000,
-      system: sys,
-      messages: [{ role: 'user', content: user }],
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Claude error: ${res.status} ${text.slice(0, 200)}`);
-  }
-
-  const data = await res.json();
-  const text: string = data?.content?.[0]?.text ?? '';
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('No JSON in translation response.');
-  const out = JSON.parse(match[0]) as { title: string; hook: string; summary: string };
-
-  return {
-    title_he: out.title?.trim() ?? '',
-    hook_he: out.hook?.trim() ? out.hook.trim() : null,
-    summary_he: out.summary?.trim() ?? '',
-  };
+  return await localizeToHebrew(
+    { title: row.title, hook: row.hook, summary: row.summary },
+    ANTHROPIC_API_KEY!,
+  );
 }
 
 Deno.serve(async (req: Request) => {
@@ -132,7 +88,7 @@ Deno.serve(async (req: Request) => {
   if (!jwt) return json({ error: 'Missing auth token.' }, 401);
   if (!ANTHROPIC_API_KEY) return json({ error: 'Server missing ANTHROPIC_API_KEY.' }, 500);
 
-  let body: { id?: string } = {};
+  let body: { id?: string; force?: boolean } = {};
   try {
     body = await req.json();
   } catch {
@@ -144,8 +100,9 @@ Deno.serve(async (req: Request) => {
   const row = await fetchRow(id, jwt);
   if (!row) return json({ error: 'Item not found.' }, 404);
 
-  // Cache hit — return existing translation without calling the model.
-  if (row.title_he && row.summary_he) {
+  // Cache hit — return existing translation without calling the model. `force`
+  // bypasses this so a low-quality cached translation can be regenerated.
+  if (!body.force && row.title_he && row.summary_he) {
     return json({
       title_he: row.title_he,
       hook_he: row.hook_he,

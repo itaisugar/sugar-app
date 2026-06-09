@@ -14,6 +14,8 @@
 //   SUPABASE_SERVICE_ROLE_KEY
 //   CURATOR_SECRET           (your own random string, also set on summarize-url)
 
+import { localizeToHebrew } from '../_shared/hebrew.ts';
+
 // @ts-ignore — Deno globals
 declare const Deno: { env: { get(key: string): string | undefined } };
 
@@ -208,7 +210,7 @@ async function summarizeUrl(url: string): Promise<{ summary?: AISummary; error?:
   return { summary: body as AISummary };
 }
 
-async function insertItem(s: AISummary, kind: 'article' | 'podcast'): Promise<boolean> {
+async function insertItem(s: AISummary, kind: 'article' | 'podcast'): Promise<string | null> {
   const contentType = /spotify\.com/i.test(s.content_url) ? 'podcast'
     : /amazon\.[a-z.]+\/|^https?:\/\/a\.co\/|read\.amazon\.com/i.test(s.content_url) ? 'book'
     : kind;
@@ -218,7 +220,7 @@ async function insertItem(s: AISummary, kind: 'article' | 'podcast'): Promise<bo
       apikey: SERVICE_ROLE_KEY!,
       Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
       'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
+      Prefer: 'return=representation',
     },
     body: JSON.stringify({
       title: s.title,
@@ -237,7 +239,35 @@ async function insertItem(s: AISummary, kind: 'article' | 'podcast'): Promise<bo
       tags: s.tags ?? [],
     }),
   });
-  return res.ok;
+  if (!res.ok) return null;
+  try {
+    const rows = await res.json();
+    return rows?.[0]?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Localize a freshly-inserted row to Hebrew so it's bilingual the moment it
+// reaches the feed. Best-effort: a failure here never fails the insert (the
+// client / backfill will translate it later).
+async function translateRow(id: string, s: AISummary): Promise<void> {
+  if (!s.summary) return;
+  try {
+    const he = await localizeToHebrew({ title: s.title, hook: s.hook, summary: s.summary }, ANTHROPIC_API_KEY!);
+    await fetch(`${SUPABASE_URL}/rest/v1/content_items?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: SERVICE_ROLE_KEY!,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(he),
+    });
+  } catch (_e) {
+    // swallow — translation is non-blocking
+  }
 }
 
 // ─── Handler ────────────────────────────────────────────────────────────────
@@ -278,8 +308,9 @@ Deno.serve(async (req: Request) => {
         results.push({ link: pick.link, ok: false, error: `summarize ${r.status ?? ''}: ${r.error}` });
         continue;
       }
-      const ok = await insertItem(r.summary, kind);
-      results.push({ link: pick.link, ok, title: r.summary.title });
+      const newId = await insertItem(r.summary, kind);
+      if (newId) await translateRow(newId, r.summary);
+      results.push({ link: pick.link, ok: !!newId, title: r.summary.title });
     } catch (e) {
       results.push({ link: pick.link, ok: false, error: (e as Error).message });
     }

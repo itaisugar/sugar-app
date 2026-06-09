@@ -17,6 +17,7 @@ import { Colors, Spacing, Radius, Fonts, Shadow, TextStyles } from '../constants
 import { Field, PrimaryButton, Banner } from '../components/auth/FormPrimitives';
 import { useProfile } from '../lib/ProfileContext';
 import { summarizeUrl, createContentItem, AISummary } from '../lib/admin';
+import { translateItem } from '../lib/translate';
 
 export default function AdminScreen() {
   const router = useRouter();
@@ -95,7 +96,7 @@ export default function AdminScreen() {
     }
     setSaving(true);
     try {
-      await createContentItem({
+      const created = await createContentItem({
         title: title.trim(),
         hook: hook.trim() || null,
         summary: summary.trim(),
@@ -116,6 +117,9 @@ export default function AdminScreen() {
           .map((t) => t.trim())
           .filter(Boolean),
       });
+      // Pre-generate the Hebrew so the item is bilingual the moment it's live.
+      // Non-fatal: if it fails, the client/backfill will translate it later.
+      try { await translateItem(created.id); } catch { /* ignore */ }
       Alert.alert('Published', 'The article is now live in the feed.', [
         { text: 'Done', onPress: () => router.back() },
       ]);

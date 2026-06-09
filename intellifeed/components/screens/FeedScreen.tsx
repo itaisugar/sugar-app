@@ -661,7 +661,7 @@ export default function FeedScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { profile, refresh: refreshProfile } = useProfile();
-  const { language, setLanguage, ensureTranslations } = useLanguage();
+  const { language, setLanguage, ensureTranslations, seedTranslations } = useLanguage();
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [langMenuPos, setLangMenuPos] = useState({ top: 0, right: Spacing.lg });
   const globeBtnRef = useRef<any>(null);
@@ -951,7 +951,16 @@ export default function FeedScreen() {
     Animated.timing(pullY, { toValue: 0, duration: 220, useNativeDriver: false }).start();
   }, [refreshing, pullY]);
 
-  // Translate visible items in bulk when the user switches to Hebrew.
+  // Seed the cache from the Hebrew already stored on each row, so switching to
+  // Hebrew is instant. Runs regardless of language, as soon as items arrive.
+  useEffect(() => {
+    if (items.length === 0) return;
+    seedTranslations(items.map((i) => ({ id: i.id, titleHe: i.titleHe ?? null, hookHe: i.hookHe ?? null, summaryHe: i.summaryHe ?? null })));
+  }, [items, seedTranslations]);
+
+  // Fallback: translate on demand any visible item that wasn't pre-translated
+  // (e.g. a brand-new row) when the user is reading in Hebrew. Pre-seeded rows
+  // are already cached, so this only fires for the stragglers.
   useEffect(() => {
     if (language !== 'he' || items.length === 0) return;
     ensureTranslations(items.map((i) => i.id));
