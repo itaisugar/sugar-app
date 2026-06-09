@@ -24,6 +24,7 @@ import Svg, { Circle, Ellipse, Line } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../constants/Theme';
 import { Equalizer, CatTag, GoldBadge, MemberFaces, EntranceView } from '../ui';
+import { PulsingSparkle } from '../BrandSplash';
 import { detectLinkKind, ctaLabelFor } from '../../lib/externalLinks';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../lib/AuthContext';
@@ -1221,8 +1222,10 @@ export default function FeedScreen() {
 
       {loading ? (
         <View style={styles.fullState}>
-          <ActivityIndicator color={Colors.primary} />
-          <Text style={[TextStyles.helper, { marginTop: 12 }]}>Loading the latest…</Text>
+          <PulsingSparkle size={84} />
+          <Text style={styles.feedLoadingWord}>
+            Creating Your Sapience<Text style={{ color: Colors.primary }}>.</Text>
+          </Text>
         </View>
       ) : error ? (
         <View style={styles.fullState}>
@@ -2250,6 +2253,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: 80,
     gap: 8,
+  },
+  feedLoadingWord: {
+    fontFamily: Fonts.display,
+    fontSize: 22,
+    lineHeight: 26,
+    letterSpacing: -0.3,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginTop: 18,
   },
   retryBtn: {
     marginTop: 16,

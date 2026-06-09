@@ -41,7 +41,9 @@ function SparkleMark({ size = 104 }: { size?: number }) {
   );
 }
 
-export default function BrandSplash() {
+// The homescreen mark, breathing grow/shrink in a gentle loop. Reused by the
+// full-screen splash and by the feed's "Creating Your Sapience." loading state.
+export function PulsingSparkle({ size = 104 }: { size?: number }) {
   const scale = useRef(new Animated.Value(0.9)).current;
 
   useEffect(() => {
@@ -66,10 +68,16 @@ export default function BrandSplash() {
   }, [scale]);
 
   return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <SparkleMark size={size} />
+    </Animated.View>
+  );
+}
+
+export default function BrandSplash() {
+  return (
     <View style={styles.root}>
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <SparkleMark size={104} />
-      </Animated.View>
+      <PulsingSparkle size={104} />
       <Text style={styles.word}>
         Sapience<Text style={styles.dot}>.</Text>
       </Text>
