@@ -1254,7 +1254,7 @@ export default function FeedScreen() {
             ]}
             pointerEvents="none"
           >
-            <ActivityIndicator color={Colors.primary} />
+            <PulsingSparkle size={34} />
           </Animated.View>
           <Animated.View style={[styles.ptrContent, { transform: [{ translateY: pullY }] }]}>
         <FlatList
