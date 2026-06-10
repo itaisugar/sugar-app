@@ -16,6 +16,10 @@ export type ContentItemRow = {
   source_avatar: string | null;
   category: string;
   category_color: string | null;
+  // Optional editorial fields — surfaced in the card only when a curator fills
+  // them in. The columns may not exist yet; `select('*')` simply omits them.
+  why_it_matters?: string | null;
+  key_idea?: string | null;
   read_time: number;
   podcast_duration: number | null;
   image_url: string | null;
@@ -53,6 +57,9 @@ export type FeedItem = {
   contentType: ContentType;
   contentUrl: string | null;
   audioUrl: string | null;
+  // Optional editorial enrichments, rendered in the card only when present.
+  whyItMatters?: string | null;
+  keyIdea?: string | null;
   likes: number;
   saves: number;
   isLiked: boolean;            // local-only for now; persisted in Step 2
@@ -95,6 +102,8 @@ function rowToFeedItem(row: ContentItemRow): FeedItem {
     contentType: row.content_type,
     contentUrl: row.content_url ?? null,
     audioUrl: row.audio_url ?? null,
+    whyItMatters: row.why_it_matters ?? null,
+    keyIdea: row.key_idea ?? null,
     likes: row.likes_count,
     saves: row.saves_count,
     isLiked: false,

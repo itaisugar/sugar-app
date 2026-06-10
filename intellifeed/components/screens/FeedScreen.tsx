@@ -251,8 +251,8 @@ function ArticleCarousel({
   onOpen: () => void;
 }) {
   const [idx, setIdx] = useState(0);
-  const [w, setW] = useState(Dimensions.get('window').width - Spacing.lg * 2 - 2);
-  const height = Math.round(w * 1.25); // Instagram-style 4:5 portrait
+  const [w, setW] = useState(Math.min(Dimensions.get('window').width, FEED_MAX_W) - H_MARGIN * 2 - 2);
+  const height = Math.round(w * MEDIA_RATIO); // calmer editorial ratio (see MEDIA_RATIO)
   const pages = slides.length + 2; // cover + content slides + CTA
 
   // Controlled paging: one swipe = at most one page, regardless of fling
@@ -523,6 +523,26 @@ function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSa
         onOpen={openArticle}
       />
 
+      {/* Optional editorial enrichments — surfaced only when a curator fills
+          them in, so the default card stays clean and compact. (These add height
+          beyond FOCUS_SLOT_H; harmless while unset, tune the slot if populated.) */}
+      {item.whyItMatters || item.keyIdea ? (
+        <View style={styles.enrich}>
+          {item.whyItMatters ? (
+            <View style={styles.enrichBlock}>
+              <Text style={styles.enrichLabel}>WHY IT MATTERS</Text>
+              <Text style={[styles.enrichText, rtlText]}>{item.whyItMatters}</Text>
+            </View>
+          ) : null}
+          {item.keyIdea ? (
+            <View style={[styles.enrichBlock, item.whyItMatters ? styles.enrichDivider : null]}>
+              <Text style={styles.enrichLabel}>KEY IDEA</Text>
+              <Text style={[styles.enrichText, rtlText]}>{item.keyIdea}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
       {/* Audio player — slim strip */}
       <TouchableOpacity
         style={[styles.audioStrip, isThisActive && styles.audioStripActive]}
@@ -593,8 +613,17 @@ function FeedCard({ item, onSave, onLike, lead = false }: { item: FeedItem; onSa
 // the audio strip, actions row and card borders — so it tracks the real card
 // height without measuring every item.
 const WIN_W = Dimensions.get('window').width;
-const FOCUS_CARD_W = WIN_W - Spacing.lg * 2 - 2; // matches the carousel's own width math
-const FOCUS_SLOT_H = Math.round(FOCUS_CARD_W * 1.25) + 98; // carousel + audio strip + actions + borders
+// Premium editorial feed, not a full-bleed social feed: cards stay inset from the
+// screen edges with comfortable side margins, and on tablet/desktop the whole feed
+// is a centred column rather than stretching across the viewport.
+const H_MARGIN = WIN_W <= 360 ? 12 : 16; // side breathing room (very small vs. normal mobile)
+const FEED_MAX_W = 600; // centred-column cap on larger screens
+const CONTENT_W = Math.min(WIN_W, FEED_MAX_W); // effective feed width the cards live in
+// Media aspect: calmer than a 4:5 social post so the card reads as an editorial
+// brief and a hint of the next card stays visible on a typical mobile screen.
+const MEDIA_RATIO = 1.1;
+const FOCUS_CARD_W = CONTENT_W - H_MARGIN * 2 - 2; // matches the carousel's own width math
+const FOCUS_SLOT_H = Math.round(FOCUS_CARD_W * MEDIA_RATIO) + 98; // carousel + audio strip + actions + borders
 const FEED_GAP = 20; // vertical gap between cards (mirrors the list contentContainer gap)
 const FOCUS_MIN_SCALE = 0.88; // off-centre cards shrink to this…
 const FOCUS_MIN_OPACITY = 0.42; // …and dim to this, so the centred card dominates
@@ -1269,7 +1298,17 @@ export default function FeedScreen() {
           ref={listRef}
           data={sortedItems}
           keyExtractor={item => item.id}
-          contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 160, gap: FEED_GAP }}
+          contentContainerStyle={{
+            paddingHorizontal: H_MARGIN,
+            paddingTop: Spacing.lg,
+            paddingBottom: 160,
+            gap: FEED_GAP,
+            // Centred column with a sensible cap so cards never span a wide
+            // viewport edge-to-edge on tablet/desktop.
+            width: '100%',
+            maxWidth: FEED_MAX_W,
+            alignSelf: 'center',
+          }}
           showsVerticalScrollIndicator={false}
           onLayout={e => {
             // Only ever grow listH. The collapsible header above the list shrinks
@@ -1828,6 +1867,33 @@ const styles = StyleSheet.create({
   cardLead: {
     borderColor: Colors.hairlineGold,
     ...Shadow.glow,
+  },
+  // Optional "Why it matters" / "Key idea" strip (only rendered when present)
+  enrich: {
+    paddingHorizontal: Spacing.base,
+    paddingVertical: 12,
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.surfaceBorder,
+    backgroundColor: Colors.surface,
+  },
+  enrichBlock: { gap: 4 },
+  enrichDivider: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.surfaceBorder,
+    paddingTop: 10,
+  },
+  enrichLabel: {
+    fontFamily: Fonts.sansSemibold,
+    fontSize: 9.5,
+    letterSpacing: 1.2,
+    color: Colors.gold,
+  },
+  enrichText: {
+    fontFamily: Fonts.sans,
+    fontSize: 13.5,
+    lineHeight: 20,
+    color: Colors.textSecondary,
   },
   // Hero image / gradient area
   cardHeroBg: {
