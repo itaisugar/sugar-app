@@ -5,6 +5,7 @@ import { AuthShell } from '../../components/auth/AuthShell';
 import { Field, PrimaryButton, GoogleButton, Divider, Banner } from '../../components/auth/FormPrimitives';
 import { useAuth } from '../../lib/AuthContext';
 import { Colors, Fonts } from '../../constants/Theme';
+import { Product } from '../../constants/Copy';
 
 export default function SignupScreen() {
   const { signUp, signInWithGoogle } = useAuth();
@@ -63,7 +64,7 @@ export default function SignupScreen() {
     <AuthShell
       kicker="Begin"
       title="Create your account"
-      subtitle="Join a community engaged in deliberate, lifelong learning."
+      subtitle={Product.description}
       footer={
         <Text style={styles.footerText}>
           Already a member?{' '}

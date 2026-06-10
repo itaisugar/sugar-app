@@ -5,6 +5,7 @@ import { AuthShell } from '../../components/auth/AuthShell';
 import { Field, PrimaryButton, GoogleButton, Divider, Banner } from '../../components/auth/FormPrimitives';
 import { useAuth } from '../../lib/AuthContext';
 import { Colors, Fonts } from '../../constants/Theme';
+import { Product } from '../../constants/Copy';
 
 export default function LoginScreen() {
   const { signIn, signInWithGoogle } = useAuth();
@@ -42,7 +43,7 @@ export default function LoginScreen() {
     <AuthShell
       kicker="Welcome Back"
       title="Sign in to Sapience"
-      subtitle="Continue your daily practice of distilled, high-signal knowledge."
+      subtitle={Product.promise}
       footer={
         <Text style={styles.footerText}>
           New here?{' '}

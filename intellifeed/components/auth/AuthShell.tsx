@@ -9,6 +9,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Colors, Spacing, Radius, TextStyles, Shadow } from '../../constants/Theme';
+import { Product } from '../../constants/Copy';
 
 export function AuthShell({
   kicker,
@@ -36,10 +37,10 @@ export function AuthShell({
         >
           <View style={styles.brand}>
             <Text style={TextStyles.appTitle}>
-              Sapience<Text style={{ color: Colors.primary }}>.</Text>
+              {Product.name}<Text style={{ color: Colors.primary }}>.</Text>
             </Text>
             <Text style={[TextStyles.tagline, { marginTop: 8 }]}>
-              An exclusive library for the relentlessly curious.
+              {Product.tagline}
             </Text>
           </View>
 

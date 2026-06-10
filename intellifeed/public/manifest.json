@@ -1,6 +1,7 @@
 {
   "name": "Sapience",
   "short_name": "Sapience",
+  "description": "Upgrade your cognitive diet. Daily briefings and curated reading clubs for people who take their mind seriously.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A090B",

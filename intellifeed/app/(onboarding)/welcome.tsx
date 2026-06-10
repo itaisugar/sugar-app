@@ -27,6 +27,7 @@ import { Banner } from '../../components/auth/FormPrimitives';
 import { useAuth } from '../../lib/AuthContext';
 import { useProfile } from '../../lib/ProfileContext';
 import { INTEREST_OPTIONS } from '../../constants/Interests';
+import { Product } from '../../constants/Copy';
 import { useReducedMotion, EASE } from '../../lib/motion';
 
 const TOTAL_STEPS = 3;
@@ -237,10 +238,9 @@ function IntroStep() {
   return (
     <View style={styles.introBlock}>
       <Text style={[TextStyles.kicker, styles.kickerSpace]}>Welcome to Sapience</Text>
-      <Text style={styles.bigTitle}>A calmer way to grow your mind</Text>
+      <Text style={styles.bigTitle}>{Product.tagline}</Text>
       <Text style={styles.lede}>
-        A focused diet of articles, podcasts, and books around the ideas you care
-        about — not an endless scroll. Read with intention, and actually retain it.
+        {Product.promise} {Product.blurb}
       </Text>
     </View>
   );

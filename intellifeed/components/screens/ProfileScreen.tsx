@@ -20,6 +20,7 @@ import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../consta
 import { Tappable, EntranceView, ProgressRing, Progress } from '../ui';
 import { getCategoryStyle } from '../../constants/Categories';
 import { USER_PROFILE, KnowledgeNode } from '../../constants/MockData';
+import { Product } from '../../constants/Copy';
 import { useAuth } from '../../lib/AuthContext';
 import { useProfile } from '../../lib/ProfileContext';
 import { pickAndUploadAvatar } from '../../lib/avatar';
@@ -378,7 +379,7 @@ export default function ProfileScreen() {
               <Text style={styles.signOutText}>{signingOut ? 'Signing out…' : 'Sign Out'}</Text>
             </TouchableOpacity>
 
-            <Text style={styles.footer}>Sapience<Text style={{ color: Colors.primary }}>.</Text> · Upgrade your cognitive diet</Text>
+            <Text style={styles.footer}>{Product.name}<Text style={{ color: Colors.primary }}>.</Text> · {Product.tagline.replace(/\.$/, '')}</Text>
           </View>
         </EntranceView>
       </ScrollView>
