@@ -11,6 +11,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../constants/Theme';
 import { CLUBS, Club, clubFaces, clubActiveNow, clubChallenge } from '../../constants/MockData';
 import { getCategoryStyle } from '../../constants/Categories';
+import { DEMO_MODE } from '../../constants/flags';
+import { Beta } from '../../constants/Copy';
 import { useProfile } from '../../lib/ProfileContext';
 import { fetchJoinedClubIds, joinClub, leaveClub, fetchJoinedClubsActivity } from '../../lib/clubs';
 import { Tappable, ZoomImage, CatTag, GoldBadge, MemberFaces, MemberMeter, LivePulse, EntranceView } from '../ui';
@@ -27,8 +29,19 @@ const MOCK_SNIPPETS: Snippet[] = [
 
 // ── Challenge progress strip ────────────────────────────────────────────────
 function ChallengeProgress({ club }: { club: Club }) {
+  if (!club.currentChallenge) return null;
+  // Beta: the challenge prompt is real curated content, but the "Day X / Y"
+  // progress and fill are fabricated — so we show the prompt without them.
+  if (!DEMO_MODE) {
+    return (
+      <View style={styles.challengeBox}>
+        <Text style={styles.challengeLabel}>THIS WEEK'S FOCUS</Text>
+        <Text style={[styles.challengeText, { marginTop: 8 }]} numberOfLines={2}>{club.currentChallenge}</Text>
+      </View>
+    );
+  }
   const ch = clubChallenge(club);
-  if (!ch || !club.currentChallenge) return null;
+  if (!ch) return null;
   const pct = Math.max(0.04, Math.min(1, ch.day / ch.total));
   return (
     <View style={styles.challengeBox}>
@@ -73,12 +86,18 @@ function JoinedClubCard({ club, snippet, onOpen, onToggle }: { club: Club; snipp
         <View style={{ flex: 1, gap: 4 }}>
           <View style={styles.membershipMetaRow}>
             <CatTag category={club.category} onDark={false} small />
-            <LivePulse label={`${clubActiveNow(club)} active now`} />
+            {DEMO_MODE ? <LivePulse label={`${clubActiveNow(club)} active now`} /> : null}
           </View>
           <Text style={styles.clubName} numberOfLines={1}>{club.name}</Text>
           <View style={styles.facesRow}>
-            <MemberFaces faces={faces} size={21} ring={Colors.surface} />
-            <Text style={styles.facesCount}>{club.members.toLocaleString()} members</Text>
+            {DEMO_MODE ? (
+              <>
+                <MemberFaces faces={faces} size={21} ring={Colors.surface} />
+                <Text style={styles.facesCount}>{club.members.toLocaleString()} members</Text>
+              </>
+            ) : (
+              <Text style={styles.betaTag}>{Beta.foundingCircle}</Text>
+            )}
           </View>
         </View>
       </View>
@@ -119,10 +138,14 @@ function SpotlightClub({ club, joined, onOpen, onToggle }: { club: Club; joined:
             <Text style={styles.spotlightName} numberOfLines={2}>{club.name}</Text>
             <Text style={styles.spotlightDesc} numberOfLines={1}>{club.description}</Text>
             <View style={styles.spotlightFooter}>
-              <View style={styles.facesRow}>
-                <MemberFaces faces={faces} size={22} ring="rgba(8,7,9,0.9)" onDark />
-                <Text style={styles.facesCountOnDark}>{club.members.toLocaleString()} members</Text>
-              </View>
+              {DEMO_MODE ? (
+                <View style={styles.facesRow}>
+                  <MemberFaces faces={faces} size={22} ring="rgba(8,7,9,0.9)" onDark />
+                  <Text style={styles.facesCountOnDark}>{club.members.toLocaleString()} members</Text>
+                </View>
+              ) : (
+                <Text style={styles.facesCountOnDark}>{Beta.beFirst}</Text>
+              )}
               <JoinButton joined={joined} onPress={onToggle} />
             </View>
           </View>
@@ -153,11 +176,17 @@ function DiscoverClubCard({ club, joined, onOpen, onToggle }: { club: Club; join
       <View style={styles.discoverBody}>
         <Text style={styles.clubDesc} numberOfLines={2}>{club.description}</Text>
         <View style={styles.discoverMetaRow}>
-          <View style={styles.facesRow}>
-            <MemberFaces faces={faces} size={20} ring={Colors.surface} />
-            <Text style={styles.facesCount}>{club.members.toLocaleString()}</Text>
-          </View>
-          <MemberMeter percent={club.weeklyActivity} />
+          {DEMO_MODE ? (
+            <>
+              <View style={styles.facesRow}>
+                <MemberFaces faces={faces} size={20} ring={Colors.surface} />
+                <Text style={styles.facesCount}>{club.members.toLocaleString()}</Text>
+              </View>
+              <MemberMeter percent={club.weeklyActivity} />
+            </>
+          ) : (
+            <Text style={styles.betaTag}>{Beta.foundingCircle}</Text>
+          )}
         </View>
         <JoinButton joined={joined} onPress={onToggle} full />
       </View>
@@ -193,10 +222,14 @@ export default function ClubsScreen() {
   const discover = clubs.filter(c => !c.isJoined);
 
   const snippetFor = (club: Club): Snippet | null => {
+    // Real discussion activity from clubs the user is in.
     if (snippets[club.id]) return snippets[club.id];
-    // Stable mock fallback so joined cards feel alive.
-    const seed = club.id.charCodeAt(club.id.length - 1);
-    return MOCK_SNIPPETS[seed % MOCK_SNIPPETS.length];
+    // Demo Mode only: a stable mock snippet so cards feel alive in screenshots.
+    if (DEMO_MODE) {
+      const seed = club.id.charCodeAt(club.id.length - 1);
+      return MOCK_SNIPPETS[seed % MOCK_SNIPPETS.length];
+    }
+    return null;
   };
 
   const openClub = (id: string) => router.push({ pathname: '/club/[id]', params: { id } });
@@ -310,6 +343,8 @@ const styles = StyleSheet.create({
   facesRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   facesCount: { fontFamily: Fonts.sansMedium, fontSize: 12, color: Colors.textMuted },
   facesCountOnDark: { fontFamily: Fonts.sansMedium, fontSize: 12, color: 'rgba(255,255,255,0.8)' },
+  // Beta-honest social-proof label, in the gold accent (replaces fake counts).
+  betaTag: { fontFamily: Fonts.sansSemibold, fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: Colors.gold },
 
   // Discussion snippet
   snippetRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },

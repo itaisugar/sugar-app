@@ -21,11 +21,15 @@ import { Tappable, EntranceView, ProgressRing, Progress } from '../ui';
 import { getCategoryStyle } from '../../constants/Categories';
 import { USER_PROFILE, KnowledgeNode } from '../../constants/MockData';
 import { Product } from '../../constants/Copy';
+import { DEMO_MODE } from '../../constants/flags';
 import { useAuth } from '../../lib/AuthContext';
 import { useProfile } from '../../lib/ProfileContext';
 import { pickAndUploadAvatar } from '../../lib/avatar';
 import { fetchSavedItems } from '../../lib/saved';
+import { fetchBranchCounts } from '../../lib/knowledge';
+import { fetchJoinedClubIds } from '../../lib/clubs';
 import { FeedItem } from '../../lib/content';
+import { Profile } from '../../lib/profile';
 
 const DOMAIN_COLORS = ['#12B886', '#4D8DF6', '#E0962B', '#13B6CC'];
 
@@ -44,6 +48,49 @@ function tierFor(score: number) {
   }
   const nextAt = next.min > cur.min ? next.min : cur.min;
   return { tier: cur.label, nextTier: next.label, nextTierAt: nextAt, maxed: next.min === cur.min };
+}
+
+// ── Achievements — derived from REAL stats, never pre-unlocked ──────────────
+// Each milestone is measured against a live profile counter, so a brand-new
+// reader sees them all honestly locked (with real progress), and they unlock
+// only when the underlying number is actually reached. No fabricated dates.
+type Achievement = {
+  id: string;
+  name: string;
+  icon: string;
+  goal: string;
+  current: number;
+  target: number;
+};
+function buildAchievements(p: Profile, savedCount: number, clubsJoined: number): Achievement[] {
+  return [
+    { id: 'first-read', name: 'First Light', icon: '✦', goal: 'Read your first piece', current: p.articles_read ?? 0, target: 1 },
+    { id: 'devoted', name: 'Devoted Reader', icon: '◆', goal: 'Read 100 articles', current: p.articles_read ?? 0, target: 100 },
+    { id: 'listener', name: 'Deep Listener', icon: '◉', goal: 'Finish 25 briefings & podcasts', current: p.podcasts_listened ?? 0, target: 25 },
+    { id: 'bibliophile', name: 'Bibliophile', icon: '❧', goal: 'Complete 10 books', current: p.books_completed ?? 0, target: 10 },
+    { id: 'streak', name: 'Consistency', icon: '✱', goal: 'Reach a 7-day streak', current: p.day_streak ?? 0, target: 7 },
+    { id: 'curator', name: 'The Curator', icon: '★', goal: 'Save 10 ideas', current: savedCount, target: 10 },
+    { id: 'connector', name: 'The Connector', icon: '◈', goal: 'Join 3 reading clubs', current: clubsJoined, target: 3 },
+    { id: 'follower', name: 'In Good Company', icon: '◇', goal: 'Follow 5 readers', current: p.following ?? 0, target: 5 },
+  ];
+}
+
+// Build the Cognitive Map from REAL signals: the user's chosen interests sized
+// by how many pieces they've actually filed under each (knowledge_leaves). New
+// accounts have no leaves → the caller shows the "still forming" empty state
+// instead of fabricated mastery scores.
+function deriveKnowledge(interests: string[], counts: Record<string, number>): KnowledgeNode[] {
+  return interests.slice(0, 6).map((label, i) => {
+    const count = counts[label] ?? 0;
+    return {
+      id: label,
+      label,
+      // Honest fill: grows as real pieces are filed, capped at 100. 0 when empty.
+      score: Math.min(100, count * 12),
+      color: DOMAIN_COLORS[i % DOMAIN_COLORS.length],
+      count,
+    };
+  });
 }
 
 // ── Concentric "Cognitive Map" rings ────────────────────────────────────────
@@ -90,20 +137,26 @@ function KnowledgeRings({ domains }: { domains: KnowledgeNode[] }) {
 function DomainRow({ node, color, defaultOpen }: { node: KnowledgeNode; color: string; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(!!defaultOpen);
   const children = node.children ?? [];
+  const hasChildren = children.length > 0;
+  // Flat interest nodes (live map) report a real filed count; grouped demo
+  // domains report how many sub-areas they track.
+  const subline = hasChildren
+    ? `${children.length} areas tracked`
+    : `${node.count ?? 0} ${(node.count ?? 0) === 1 ? 'piece' : 'pieces'} filed`;
   return (
     <View style={[styles.card, { padding: 0 }]}>
       <View style={{ flexDirection: 'row' }}>
         <View style={{ width: 3, backgroundColor: color }} />
         <View style={{ flex: 1, padding: Spacing.base }}>
-          <TouchableOpacity onPress={() => setOpen(o => !o)} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 13 }}>
+          <TouchableOpacity onPress={() => hasChildren && setOpen(o => !o)} activeOpacity={hasChildren ? 0.8 : 1} style={{ flexDirection: 'row', alignItems: 'center', gap: 13 }}>
             <ProgressRing pct={node.score} size={44} stroke={3.5} color={color} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.domainLabel}>{node.label}</Text>
-              <Text style={styles.domainSub}>{children.length} areas tracked</Text>
+              <Text style={styles.domainSub}>{subline}</Text>
             </View>
-            <Text style={styles.chev}>{open ? '⌄' : '›'}</Text>
+            {hasChildren ? <Text style={styles.chev}>{open ? '⌄' : '›'}</Text> : null}
           </TouchableOpacity>
-          {open ? (
+          {open && hasChildren ? (
             <View style={styles.domainChildren}>
               {children.map(ch => (
                 <View key={ch.id ?? ch.label}>
@@ -132,6 +185,9 @@ export default function ProfileScreen() {
   const [savedLoading, setSavedLoading] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  // Real signals behind the Cognitive Map + achievements (see effect below).
+  const [branchCounts, setBranchCounts] = useState<Record<string, number>>({});
+  const [clubsJoined, setClubsJoined] = useState(0);
 
   const onChangeAvatar = async () => {
     if (avatarBusy || !user) return;
@@ -157,13 +213,26 @@ export default function ProfileScreen() {
     }
   };
 
+  // Load real signals once on mount: saved library (also drives the Saved count
+  // and the Curator achievement), knowledge-leaf counts per interest (the
+  // Cognitive Map), and how many clubs the user has actually joined.
   useEffect(() => {
-    if (tab !== 'saved') return;
     (async () => {
       setSavedLoading(true);
-      try { setSavedItems(await fetchSavedItems()); } catch {} finally { setSavedLoading(false); }
+      try {
+        const [s, counts, joined] = await Promise.all([
+          fetchSavedItems().catch(() => [] as FeedItem[]),
+          fetchBranchCounts().catch(() => ({} as Record<string, number>)),
+          fetchJoinedClubIds().catch(() => new Set<string>()),
+        ]);
+        setSavedItems(s);
+        setBranchCounts(counts);
+        setClubsJoined(joined.size);
+      } finally {
+        setSavedLoading(false);
+      }
     })();
-  }, [tab]);
+  }, []);
 
   if (profileLoading && !dbProfile) {
     return <SafeAreaView style={styles.container}><View style={styles.centered}><ActivityIndicator color={Colors.primary} /><Text style={styles.statusText}>Loading your profile…</Text></View></SafeAreaView>;
@@ -179,7 +248,7 @@ export default function ProfileScreen() {
   const displayEmail = dbProfile.email ?? user?.email ?? '';
   const initial = (displayName || displayEmail || 'I').charAt(0).toUpperCase();
   const handle = displayEmail ? `@${displayEmail.split('@')[0]}` : '@reader';
-  const bio = (dbProfile as any).bio ?? 'Building a deliberate cognitive diet — reading at the intersection of medicine, machines, and the mind.';
+  const bio = (dbProfile as any).bio ?? 'Building a deliberate cognitive diet.';
 
   const totalScore = dbProfile.total_score ?? 0;
   const { tier, nextTier, nextTierAt, maxed } = tierFor(totalScore);
@@ -196,8 +265,15 @@ export default function ProfileScreen() {
   const followers = dbProfile.followers ?? 0;
   const interests = dbProfile.interests?.length ? dbProfile.interests : null;
 
-  const knowledge = USER_PROFILE.knowledgeTree;
-  const badges = USER_PROFILE.badges;
+  const interestsList = dbProfile.interests ?? [];
+  const totalLeaves = Object.values(branchCounts).reduce((a, b) => a + b, 0);
+  // Honest Cognitive Map: real interests sized by real filed pieces. In Demo
+  // Mode we show the rich seeded tree instead.
+  const knowledge = DEMO_MODE ? USER_PROFILE.knowledgeTree : deriveKnowledge(interestsList, branchCounts);
+  const hasKnowledge = DEMO_MODE || (interestsList.length > 0 && totalLeaves > 0);
+  // Real, progress-based achievements (vs. the seeded demo badges).
+  const achievements = buildAchievements(dbProfile, savedItems.length, clubsJoined);
+  const demoBadges = USER_PROFILE.badges;
   const saved = savedItems;
 
   const Stat = ({ n, l }: { n: number | string; l: string }) => (
@@ -301,16 +377,39 @@ export default function ProfileScreen() {
                   <Stat n={books} l="BOOKS COMPLETED" />
                 </View>
                 <View style={[styles.card, { padding: Spacing.lg }]}>
-                  <Text style={[styles.faintKicker, { marginBottom: 14 }]}>ACHIEVEMENTS</Text>
-                  <View style={styles.badgeGrid}>
-                    {badges.map(b => (
-                      <View key={b.id} style={styles.badge}>
-                        <Text style={styles.badgeIcon}>{b.icon}</Text>
-                        <Text style={styles.badgeName}>{b.name}</Text>
-                        <Text style={styles.badgeDesc}>{b.description}</Text>
-                        <Text style={styles.badgeDate}>{b.unlockedAt?.toUpperCase()}</Text>
-                      </View>
-                    ))}
+                  <View style={styles.achHeader}>
+                    <Text style={styles.faintKicker}>ACHIEVEMENTS</Text>
+                    {!DEMO_MODE ? (
+                      <Text style={styles.achCount}>
+                        {achievements.filter(a => a.current >= a.target).length} / {achievements.length} unlocked
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={[styles.badgeGrid, { marginTop: 14 }]}>
+                    {DEMO_MODE
+                      ? demoBadges.map(b => (
+                          <View key={b.id} style={styles.badge}>
+                            <Text style={styles.badgeIcon}>{b.icon}</Text>
+                            <Text style={styles.badgeName}>{b.name}</Text>
+                            <Text style={styles.badgeDesc}>{b.description}</Text>
+                            <Text style={styles.badgeDate}>{b.unlockedAt?.toUpperCase()}</Text>
+                          </View>
+                        ))
+                      : achievements.map(a => {
+                          const unlocked = a.current >= a.target;
+                          return (
+                            <View key={a.id} style={[styles.badge, !unlocked && styles.badgeLocked]}>
+                              <Text style={[styles.badgeIcon, !unlocked && styles.badgeIconLocked]}>
+                                {unlocked ? a.icon : '🔒'}
+                              </Text>
+                              <Text style={[styles.badgeName, !unlocked && styles.badgeNameLocked]}>{a.name}</Text>
+                              <Text style={styles.badgeDesc}>{a.goal}</Text>
+                              <Text style={[styles.badgeDate, !unlocked && styles.badgeProgress]}>
+                                {unlocked ? 'UNLOCKED' : `${Math.min(a.current, a.target)} / ${a.target}`}
+                              </Text>
+                            </View>
+                          );
+                        })}
                   </View>
                 </View>
               </View>
@@ -322,13 +421,28 @@ export default function ProfileScreen() {
                   <Text style={styles.sectionTitle}>Cognitive Map</Text>
                   <Text style={styles.sectionSub}>A living map of where your attention compounds.</Text>
                 </View>
-                <View style={[styles.card, styles.cardGlow, { padding: Spacing.lg, alignItems: 'center' }]}>
-                  <KnowledgeRings domains={knowledge} />
-                </View>
-                <Text style={styles.faintKicker}>BY DOMAIN</Text>
-                {knowledge.map((n, i) => (
-                  <DomainRow key={n.id} node={n} color={DOMAIN_COLORS[i % DOMAIN_COLORS.length]} defaultOpen={i === 0} />
-                ))}
+                {hasKnowledge ? (
+                  <>
+                    <View style={[styles.card, styles.cardGlow, { padding: Spacing.lg, alignItems: 'center' }]}>
+                      <KnowledgeRings domains={knowledge} />
+                    </View>
+                    <Text style={styles.faintKicker}>BY DOMAIN</Text>
+                    {knowledge.map((n, i) => (
+                      <DomainRow key={n.id} node={n} color={DOMAIN_COLORS[i % DOMAIN_COLORS.length]} defaultOpen={i === 0} />
+                    ))}
+                  </>
+                ) : (
+                  <View style={styles.savedEmpty}>
+                    <Text style={styles.savedEmptyTitle}>Your map is still forming</Text>
+                    <Text style={styles.savedEmptyText}>
+                      File articles and podcasts into your knowledge tree as you read. Each one maps a
+                      domain here.
+                    </Text>
+                    <TouchableOpacity style={styles.emptyCta} onPress={() => router.push('/tree')} activeOpacity={0.85}>
+                      <Text style={styles.emptyCtaText}>Open your knowledge tree</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             ) : null}
 
@@ -529,12 +643,22 @@ const styles = StyleSheet.create({
   statTile: { flex: 1, padding: Spacing.base, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface, alignItems: 'center', ...Shadow.sm },
   statTileNum: { fontFamily: Fonts.display, fontSize: 28, color: Colors.primary, letterSpacing: -0.6, lineHeight: 30 },
   statTileLabel: { fontFamily: Fonts.mono, fontSize: 9.5, letterSpacing: 1, color: Colors.textMuted, marginTop: 8 },
+  achHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  achCount: { fontFamily: Fonts.mono, fontSize: 9.5, letterSpacing: 0.8, color: Colors.textMuted },
   badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   badge: { width: '47%', padding: Spacing.base, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.hairlineGold, alignItems: 'center' },
   badgeIcon: { fontSize: 26, color: Colors.gold },
   badgeName: { fontFamily: Fonts.display, fontSize: 13, color: Colors.textPrimary, marginTop: 6, textAlign: 'center' },
   badgeDesc: { fontFamily: Fonts.sans, fontSize: 10.5, lineHeight: 15, color: Colors.textMuted, marginTop: 3, textAlign: 'center' },
   badgeDate: { fontFamily: Fonts.mono, fontSize: 8.5, letterSpacing: 1, color: Colors.gold, marginTop: 6 },
+  // Locked achievement — dimmed, hairline border, neutral progress label.
+  badgeLocked: { borderColor: Colors.border, opacity: 0.92 },
+  badgeIconLocked: { fontSize: 22, color: Colors.textFaint },
+  badgeNameLocked: { color: Colors.textSecondary },
+  badgeProgress: { color: Colors.textMuted },
+  // Empty-state CTA (shared by the forming Cognitive Map)
+  emptyCta: { marginTop: 14, paddingHorizontal: 18, paddingVertical: 10, borderRadius: Radius.full, backgroundColor: Colors.primary },
+  emptyCtaText: { fontFamily: Fonts.sansSemibold, fontSize: 13, letterSpacing: 0.1, color: Colors.onPrimary },
 
   // Section titles
   sectionTitle: { fontFamily: Fonts.display, fontSize: 22, letterSpacing: -0.4, color: Colors.textPrimary },

@@ -6,6 +6,8 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors, Spacing, Radius, Fonts, TextStyles, Shadow } from '../../constants/Theme';
 import { CLUBS } from '../../constants/MockData';
+import { DEMO_MODE } from '../../constants/flags';
+import { Beta } from '../../constants/Copy';
 import { useProfile } from '../../lib/ProfileContext';
 import {
   fetchJoinedClubIds, joinClub, leaveClub,
@@ -145,32 +147,45 @@ export default function ClubDetailScreen() {
 
           {/* Members + CTA */}
           <View style={styles.membersRow}>
-            <View style={styles.avatars}>
-              {['T', 'M', 'R', 'S', 'N'].map((l, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.avatar,
-                    {
-                      backgroundColor: [
-                        Colors.primary, Colors.accentSage, Colors.accentBurgundy,
-                        Colors.accentOchre, Colors.textPrimary,
-                      ][i],
-                      marginLeft: i === 0 ? 0 : -8,
-                    },
-                  ]}
-                >
-                  <Text style={styles.avatarText}>{l}</Text>
-                </View>
-              ))}
-            </View>
+            {DEMO_MODE ? (
+              <View style={styles.avatars}>
+                {['T', 'M', 'R', 'S', 'N'].map((l, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.avatar,
+                      {
+                        backgroundColor: [
+                          Colors.primary, Colors.accentSage, Colors.accentBurgundy,
+                          Colors.accentOchre, Colors.textPrimary,
+                        ][i],
+                        marginLeft: i === 0 ? 0 : -8,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.avatarText}>{l}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
             <View style={{ flex: 1 }}>
-              <Text style={[TextStyles.tagline, { color: Colors.textSecondary }]}>
-                + {club.members.toLocaleString()} more readers
-              </Text>
-              <Text style={[TextStyles.meta, { marginTop: 2 }]}>
-                Thursdays at 19:00 GMT
-              </Text>
+              {DEMO_MODE ? (
+                <>
+                  <Text style={[TextStyles.tagline, { color: Colors.textSecondary }]}>
+                    + {club.members.toLocaleString()} more readers
+                  </Text>
+                  <Text style={[TextStyles.meta, { marginTop: 2 }]}>
+                    Thursdays at 19:00 GMT
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text style={[TextStyles.kicker, { color: Colors.gold }]}>{Beta.foundingCircle}</Text>
+                  <Text style={[TextStyles.tagline, { color: Colors.textSecondary, marginTop: 3 }]}>
+                    {Beta.beFirst}
+                  </Text>
+                </>
+              )}
             </View>
             <TouchableOpacity
               onPress={onJoinLeave}
@@ -197,12 +212,16 @@ export default function ClubDetailScreen() {
                 <Text style={styles.readingTitle}>
                   {club.currentChallenge ?? `The ${club.category} Reader — Vol. II`}
                 </Text>
-                <Text style={[TextStyles.helper, { marginTop: 6 }]}>
-                  {club.weeklyActivity}% of members active this week
-                </Text>
-                <View style={styles.readingBar}>
-                  <View style={[styles.readingBarFill, { width: `${club.weeklyActivity}%` }]} />
-                </View>
+                {DEMO_MODE ? (
+                  <>
+                    <Text style={[TextStyles.helper, { marginTop: 6 }]}>
+                      {club.weeklyActivity}% of members active this week
+                    </Text>
+                    <View style={styles.readingBar}>
+                      <View style={[styles.readingBarFill, { width: `${club.weeklyActivity}%` }]} />
+                    </View>
+                  </>
+                ) : null}
               </View>
             </View>
           </View>

@@ -23,3 +23,14 @@ export const Product = {
   /** Shorter blurb for tight spaces (onboarding lede, etc.). */
   blurb: 'Daily briefings and curated reading clubs — not an endless scroll.',
 } as const;
+
+// ─── Beta-honest social copy ─────────────────────────────────────────────────
+// Used in place of fabricated traction (member counts, "% active") while we're
+// in private beta. These are true statements: every club really is a founding
+// circle, and testers really are among the first readers.
+export const Beta = {
+  foundingCircle: 'Founding circle',
+  earlyClub: 'Early beta club',
+  beFirst: 'Be among the first readers',
+  newClub: 'New club',
+} as const;

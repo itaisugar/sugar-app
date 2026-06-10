@@ -51,6 +51,9 @@ export interface KnowledgeNode {
   score: number;
   color: string;
   children?: KnowledgeNode[];
+  // Real count of pieces filed under this domain (used by the live Cognitive Map
+  // when the node is a flat interest rather than a grouped demo domain).
+  count?: number;
 }
 
 export interface UserProfile {

@@ -181,7 +181,7 @@ export default function EditProfileScreen() {
                 label="Full Name"
                 value={fullName}
                 onChangeText={setFullName}
-                placeholder="Itai Bell"
+                placeholder="Your name"
                 autoCapitalize="words"
                 autoComplete="name"
                 textContentType="name"
