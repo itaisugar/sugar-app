@@ -25,6 +25,7 @@ import { useProfile } from '../../lib/ProfileContext';
 import { pickAndUploadAvatar } from '../../lib/avatar';
 import { fetchSavedItems } from '../../lib/saved';
 import { FeedItem } from '../../lib/content';
+import { usePwaInstall } from '../../lib/usePwaInstall';
 
 const DOMAIN_COLORS = ['#12B886', '#4D8DF6', '#E0962B', '#13B6CC'];
 
@@ -131,6 +132,22 @@ export default function ProfileScreen() {
   const [savedLoading, setSavedLoading] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [installOpen, setInstallOpen] = useState(false);
+  // PWA "Add to Home Screen" — only shown on the web build when not already
+  // installed. Chrome/Android can fire the native prompt; iOS needs manual steps.
+  const { supported: pwaSupported, canPrompt, isIOS, isStandalone, promptInstall } = usePwaInstall();
+  const showInstall = pwaSupported && !isStandalone;
+
+  const onInstallApp = async () => {
+    if (canPrompt) {
+      const outcome = await promptInstall();
+      // If the browser couldn't surface the prompt, fall back to instructions.
+      if (outcome === 'unavailable') setInstallOpen(true);
+      return;
+    }
+    // iOS Safari, or a desktop browser that hasn't offered a prompt yet.
+    setInstallOpen(true);
+  };
 
   const onChangeAvatar = async () => {
     if (avatarBusy || !user) return;
@@ -363,6 +380,7 @@ export default function ProfileScreen() {
             <View style={[styles.card, { overflow: 'hidden' }]}>
               {([
                 ...(dbProfile.is_admin ? [{ label: 'Editorial Desk', onPress: () => router.push('/admin') }] : []),
+                ...(showInstall ? [{ label: 'Install App', onPress: onInstallApp }] : []),
                 { label: 'Account Settings', onPress: () => {} },
                 { label: 'Notifications', onPress: () => setNotifOpen(true) },
                 { label: 'Refine Interests', onPress: () => router.push('/edit-profile') },
@@ -428,6 +446,52 @@ export default function ProfileScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Install instructions — shown for iOS Safari, or when the browser can't
+          surface a one-tap install prompt. */}
+      <Modal
+        visible={installOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInstallOpen(false)}
+      >
+        <Pressable style={styles.notifBackdrop} onPress={() => setInstallOpen(false)}>
+          <Pressable style={styles.notifPanel} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.notifPanelHeader}>
+              <Text style={[styles.faintKicker, { letterSpacing: 1.4 }]}>INSTALL SAPIENCE</Text>
+              <TouchableOpacity onPress={() => setInstallOpen(false)} hitSlop={12}>
+                <Text style={styles.notifClose}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.notifyHint}>
+              {isIOS
+                ? 'Add Sapience to your home screen for a full-screen, app-like experience.'
+                : 'Install Sapience as an app on your device for quick, full-screen access.'}
+            </Text>
+            <View style={{ marginTop: 8, gap: 12 }}>
+              {(isIOS
+                ? [
+                    'Tap the Share button in Safari’s toolbar.',
+                    'Scroll down and choose “Add to Home Screen.”',
+                    'Tap “Add” — Sapience now lives on your home screen.',
+                  ]
+                : [
+                    'Open your browser’s menu (⋮ or the address-bar install icon).',
+                    'Choose “Install Sapience” or “Add to Home screen.”',
+                    'Confirm — Sapience opens in its own window.',
+                  ]
+              ).map((step, i) => (
+                <View key={i} style={styles.installStep}>
+                  <View style={styles.installStepNum}>
+                    <Text style={styles.installStepNumText}>{i + 1}</Text>
+                  </View>
+                  <Text style={styles.installStepText}>{step}</Text>
+                </View>
+              ))}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -483,6 +547,15 @@ const styles = StyleSheet.create({
   },
   notifPanelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   notifClose: { fontFamily: Fonts.sansSemibold, fontSize: 14, color: Colors.primary },
+
+  // Install instructions steps
+  installStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  installStepNum: {
+    width: 24, height: 24, borderRadius: 12, backgroundColor: Colors.primarySoft,
+    borderWidth: 1, borderColor: Colors.hairlineGold, alignItems: 'center', justifyContent: 'center',
+  },
+  installStepNumText: { fontFamily: Fonts.sansSemibold, fontSize: 11, color: Colors.primary },
+  installStepText: { flex: 1, fontFamily: Fonts.sans, fontSize: 13.5, lineHeight: 20, color: Colors.textSecondary },
   heroName: { fontFamily: Fonts.display, fontSize: 24, letterSpacing: -0.4, color: Colors.textPrimary, marginTop: 14 },
   tierChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8,
